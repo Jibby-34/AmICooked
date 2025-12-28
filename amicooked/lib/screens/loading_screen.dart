@@ -132,7 +132,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated flame icon
+                // Animated logo
                 AnimatedBuilder(
                   animation: _flameAnimation,
                   builder: (context, child) {
@@ -152,10 +152,11 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                             ),
                           ],
                         ),
-                        child: const Center(
-                          child: Text(
-                            '🔥',
-                            style: TextStyle(fontSize: 64),
+                        child: Center(
+                          child: Image.asset(
+                            'lib/icons/logo.png',
+                            width: 80,
+                            height: 80,
                           ),
                         ),
                       ),

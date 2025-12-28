@@ -86,9 +86,10 @@ class ShareableResultCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '🔥',
-                  style: TextStyle(fontSize: 40),
+                Image.asset(
+                  'lib/icons/logo.png',
+                  width: 48,
+                  height: 48,
                 ),
                 SizedBox(width: 16),
                 Text(
