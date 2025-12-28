@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/cooked_result.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cooked_meter.dart';
+import '../services/share_service.dart';
 import 'home_screen.dart';
 
 class ResultsScreen extends StatefulWidget {
@@ -19,6 +20,8 @@ class ResultsScreen extends StatefulWidget {
 class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  final ShareService _shareService = ShareService();
+  bool _isSharing = false;
 
   @override
   void initState() {
@@ -77,18 +80,48 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     );
   }
 
-  void _shareVerdict() {
-    // Stub for future share feature
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('📱 Share feature coming soon!'),
-        backgroundColor: AppTheme.flameOrange,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-    );
+  void _shareVerdict() async {
+    if (_isSharing) return;
+    
+    setState(() {
+      _isSharing = true;
+    });
+
+    try {
+      await _shareService.shareResult(context, widget.result);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✅ Shared successfully!'),
+            backgroundColor: const Color(0xFF4CAF50),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Failed to share: $e'),
+            backgroundColor: AppTheme.flameRed,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+      }
+    }
   }
 
   @override
@@ -199,9 +232,17 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                         const SizedBox(width: 16),
                         Expanded(
                           child: OutlinedButton.icon(
-                            onPressed: _shareVerdict,
-                            icon: const Icon(Icons.share, size: 20),
-                            label: const Text('Share'),
+                            onPressed: _isSharing ? null : _shareVerdict,
+                            icon: _isSharing 
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.share, size: 20),
+                            label: Text(_isSharing ? 'Sharing...' : 'Share'),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(0, 56),
                             ),

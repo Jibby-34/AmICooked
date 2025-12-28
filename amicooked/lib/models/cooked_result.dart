@@ -8,11 +8,19 @@ class CookedResult {
   
   /// 2-4 sentences of humorous explanation
   final String explanation;
+  
+  /// Optional user input text (for context in sharing)
+  final String? inputText;
+  
+  /// Optional chat highlights or key moments
+  final List<String>? chatHighlights;
 
   CookedResult({
     required this.cookedPercent,
     required this.verdict,
     required this.explanation,
+    this.inputText,
+    this.chatHighlights,
   });
 
   /// Factory constructor for JSON deserialization (for future API integration)
@@ -21,6 +29,10 @@ class CookedResult {
       cookedPercent: json['cookedPercent'] as int,
       verdict: json['verdict'] as String,
       explanation: json['explanation'] as String,
+      inputText: json['inputText'] as String?,
+      chatHighlights: json['chatHighlights'] != null 
+          ? List<String>.from(json['chatHighlights'] as List)
+          : null,
     );
   }
 
@@ -30,6 +42,8 @@ class CookedResult {
       'cookedPercent': cookedPercent,
       'verdict': verdict,
       'explanation': explanation,
+      if (inputText != null) 'inputText': inputText,
+      if (chatHighlights != null) 'chatHighlights': chatHighlights,
     };
   }
 }

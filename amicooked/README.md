@@ -6,6 +6,10 @@ A fun, dramatic Flutter app that judges how "cooked" you are based on text or sc
 
 - **Text Analysis**: Paste any message, email, DM, or code snippet
 - **Screenshot Upload**: Upload images to analyze
+- **Share Feature**: Generate and share beautiful, branded images of your results
+  - Includes cooked percentage, verdict, and key highlights
+  - Instagram-optimized dimensions
+  - Watermarked with app branding
 - **Dramatic Animations**: 
   - Glowing button effects
   - Animated loading screen with cycling messages
@@ -26,11 +30,13 @@ lib/
 │   ├── loading_screen.dart        # Animated loading/judgment screen
 │   └── results_screen.dart        # Results display with verdict
 ├── services/
-│   └── analysis_service.dart      # Analysis logic (currently mock)
+│   ├── analysis_service.dart      # AI analysis integration
+│   └── share_service.dart         # Share functionality
 ├── theme/
 │   └── app_theme.dart             # App-wide theme configuration
 └── widgets/
-    └── cooked_meter.dart          # Animated circular progress indicator
+    ├── cooked_meter.dart          # Animated circular progress indicator
+    └── shareable_result_card.dart # Beautiful share card widget
 ```
 
 ## Tech Stack
@@ -38,6 +44,10 @@ lib/
 - **Flutter SDK**: ^3.10.3
 - **Dependencies**:
   - `image_picker`: ^1.0.7 - For screenshot uploads
+  - `screenshot`: ^3.0.0 - For generating shareable images
+  - `share_plus`: ^10.1.2 - For native sharing functionality
+  - `path_provider`: ^2.1.5 - For temporary file storage
+  - `http`: ^1.2.0 - For API communication
   - `cupertino_icons`: ^1.0.8 - iOS-style icons
 
 ## Getting Started
@@ -72,14 +82,25 @@ flutter run
 1. **Home Screen**: User pastes text or uploads a screenshot
 2. **Loading Screen**: Animated loading messages build anticipation
 3. **Results Screen**: Dramatic reveal of the "cooked" percentage with explanation
+4. **Share**: Tap share to generate a beautiful branded image and share to social media
+
+### Share Feature
+
+The app includes a comprehensive share feature that generates visually appealing images:
+- Captures a specially designed `ShareableResultCard` widget
+- Includes cooked percentage, verdict, and key highlights
+- Branded with "Made with 'Am I Cooked?' app" watermark
+- Optimized for social media sharing (Instagram, etc.)
+
+See [SHARE_FEATURE.md](SHARE_FEATURE.md) for detailed documentation.
 
 ### Mock AI Analysis
 
-The app currently uses a mock analysis service (`lib/services/analysis_service.dart`) that:
-- Simulates a 2-second processing delay
-- Generates random "cooked" percentages
-- Adjusts scores based on simple text heuristics
+The app uses AI integration via a Cloudflare Worker proxy (`lib/services/analysis_service.dart`) that:
+- Connects to Google's Gemini API
+- Analyzes text and images for "cooked" level
 - Provides humorous verdicts and explanations
+- Supports both text and image inputs
 
 ### Integrating Real AI
 
@@ -127,24 +148,26 @@ Future<CookedResult> analyzeInput({
 - **Loading States**: Cycling text with fade transitions
 - **Page Transitions**: Slide and fade effects
 
-## Future Features (Stubs)
+## Future Features
 
-The following features are stubbed out for future implementation:
+The following features are planned or stubbed out for future implementation:
 
-- **🔥 Save Me**: AI-powered rewrite suggestions
-- **📱 Share**: Share your verdict to social media
+- **🔥 Save Me**: AI-powered rewrite suggestions (stub)
 - **🎯 Mode Selection**: Analyze in different contexts (school, work, dating, etc.)
+- **📊 History**: View past analyses
+- **🎨 Customizable Share Cards**: Different templates and styles
 
 ## Contributing
 
 This is an MVP ready for further development. Key areas for enhancement:
 
-1. Real AI integration
-2. Share functionality
-3. Rewrite suggestions
-4. Context mode selection
-5. History/saved results
-6. More sophisticated analysis
+1. Enhanced AI integration with more analysis modes
+2. Rewrite suggestions feature
+3. Context mode selection
+4. History/saved results
+5. More sophisticated analysis
+6. Customizable share card templates
+7. Analytics and insights
 
 ## License
 
