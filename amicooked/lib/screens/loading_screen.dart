@@ -88,7 +88,6 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
       final result = await _analysisService.analyzeInput(
         text: widget.text,
         image: widget.image,
-        mode: 'general',
       );
       
       if (mounted) {
