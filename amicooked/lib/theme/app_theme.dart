@@ -18,6 +18,12 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient fireGradientReverse = LinearGradient(
+    colors: [flameYellow, flameOrange, flameRed],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static const LinearGradient cookedMeterGradient = LinearGradient(
     colors: [
       Color(0xFF4CAF50), // Green
@@ -28,6 +34,11 @@ class AppTheme {
       Color(0xFFFF3B30), // Red
     ],
     stops: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+  );
+
+  static const RadialGradient emberGlow = RadialGradient(
+    colors: [flameOrange, flameRed, Colors.transparent],
+    stops: [0.0, 0.5, 1.0],
   );
 
   static ThemeData get darkTheme {
