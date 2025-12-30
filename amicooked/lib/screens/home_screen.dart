@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +23,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late Animation<double> _glowAnimation;
   late AnimationController _emberController;
   final List<Ember> _embers = [];
+  
+  // Typing animation
+  String _typingText = '';
+  int _currentExampleIndex = 0;
+  int _currentCharIndex = 0;
+  Timer? _typingTimer;
+  bool _isDeleting = false;
+  
+  final List<String> _examples = [
+    'My crush just confessed her love to me..',
+    'I just cheated on my wife',
+    'Sent my boss a text meant for my friend',
+    'Told my ex I still have feelings',
+    'Posted a drunk tweet at 3am',
+    'My side hustle just got exposed',
+    'Accidentally liked my ex\'s photo from 2019',
+    'Forgot my anniversary... again',
+    'Got caught lying about being sick',
+    'My DMs just got leaked',
+  ];
 
   @override
   void initState() {
@@ -60,10 +81,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             : AppTheme.flameYellow,
       ));
     }
+    
+    // Start typing animation
+    _startTypingAnimation();
+  }
+  
+  void _startTypingAnimation() {
+    _typingTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      // Only animate if user hasn't typed anything
+      if (_textController.text.isEmpty) {
+        setState(() {
+          final currentExample = _examples[_currentExampleIndex];
+          
+          if (!_isDeleting) {
+            // Typing forward
+            if (_currentCharIndex < currentExample.length) {
+              _typingText = currentExample.substring(0, _currentCharIndex + 1);
+              _currentCharIndex++;
+            } else {
+              // Pause at the end before deleting
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                if (mounted) {
+                  setState(() {
+                    _isDeleting = true;
+                  });
+                }
+              });
+            }
+          } else {
+            // Deleting backward
+            if (_currentCharIndex > 0) {
+              _currentCharIndex--;
+              _typingText = currentExample.substring(0, _currentCharIndex);
+            } else {
+              // Move to next example
+              _isDeleting = false;
+              _currentExampleIndex = (_currentExampleIndex + 1) % _examples.length;
+            }
+          }
+        });
+      } else {
+        // User is typing, clear the animation text
+        setState(() {
+          _typingText = '';
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
     _textController.dispose();
     _glowController.dispose();
     _emberController.dispose();
@@ -209,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   
                   const SizedBox(height: 48),
                   
-                  // Text Input with enhanced styling
+                  // Text Input with enhanced styling and typing animation
                   AnimatedBuilder(
                     animation: _glowAnimation,
                     builder: (context, child) {
@@ -226,13 +299,52 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 ]
                               : null,
                         ),
-                        child: TextField(
-                          controller: _textController,
-                          maxLines: 10,
-                          decoration: const InputDecoration(
-                            hintText: 'Paste the message, essay, email, code, or DM here...',
-                            alignLabelWithHint: true,
-                          ),
+                        child: Stack(
+                          children: [
+                            TextField(
+                              controller: _textController,
+                              maxLines: 10,
+                              style: const TextStyle(color: AppTheme.textPrimary),
+                              decoration: const InputDecoration(
+                                hintText: '',
+                                alignLabelWithHint: true,
+                              ),
+                            ),
+                            // Custom typing animation overlay
+                            if (_textController.text.isEmpty && _typingText.isNotEmpty)
+                              Positioned(
+                                left: 20,
+                                top: 20,
+                                right: 20,
+                                child: IgnorePointer(
+                                  child: RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: _typingText,
+                                          style: TextStyle(
+                                            color: AppTheme.textSecondary.withOpacity(0.6),
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                        // Blinking cursor
+                                        TextSpan(
+                                          text: _isDeleting ? '' : '|',
+                                          style: TextStyle(
+                                            color: AppTheme.flameOrange.withOpacity(
+                                              _glowAnimation.value,
+                                            ),
+                                            fontSize: 16,
+                                            height: 1.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       );
                     },
