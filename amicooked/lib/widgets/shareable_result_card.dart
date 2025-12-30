@@ -48,12 +48,12 @@ class ShareableResultCard extends StatelessWidget {
   List<String> _extractHighlights(String explanation) {
     // Extract key phrases (sentences) from the explanation
     final sentences = explanation.split(RegExp(r'[.!?]+')).where((s) => s.trim().isNotEmpty).toList();
-    
+
     // Return up to 3 sentences as highlights
     if (sentences.length <= 2) {
       return sentences.map((s) => s.trim()).toList();
     }
-    
+
     // If there are more than 2 sentences, take the first 2
     return sentences.take(2).map((s) => s.trim()).toList();
   }
@@ -62,7 +62,7 @@ class ShareableResultCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final highlights = _extractHighlights(result.explanation);
     final primaryColor = _getColorForPercentage(result.cookedPercent);
-    
+
     return Container(
       width: 1080, // Instagram post size width
       decoration: BoxDecoration(
@@ -87,7 +87,7 @@ class ShareableResultCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset(
-                  'lib/icons/logo.png',
+                  'lib/icons/amicooked_logo.png',
                   width: 48,
                   height: 48,
                 ),
@@ -103,14 +103,14 @@ class ShareableResultCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: 60),
-            
+
             // Circular meter
             _buildCircularMeter(primaryColor),
-            
+
             SizedBox(height: 48),
-            
+
             // Verdict with emoji
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -136,9 +136,9 @@ class ShareableResultCard extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             SizedBox(height: 40),
-            
+
             // Highlights section
             Container(
               padding: EdgeInsets.all(32),
@@ -204,9 +204,9 @@ class ShareableResultCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             SizedBox(height: 60),
-            
+
             // Watermark at the bottom
             Container(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -234,7 +234,7 @@ class ShareableResultCard extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             SizedBox(height: 24),
           ],
         ),
@@ -258,7 +258,7 @@ class ShareableResultCard extends StatelessWidget {
               strokeWidth: 28,
             ),
           ),
-          
+
           // Progress circle
           CustomPaint(
             size: Size(300, 300),
@@ -268,7 +268,7 @@ class ShareableResultCard extends StatelessWidget {
               strokeWidth: 28,
             ),
           ),
-          
+
           // Percentage text in center
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -315,17 +315,17 @@ class _CircularMeterPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
-    
+
     final paint = Paint()
       ..color = color
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
-    
+
     // Draw arc from top (-90 degrees) clockwise
     const startAngle = -math.pi / 2;
     final sweepAngle = 2 * math.pi * percentage;
-    
+
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
       startAngle,
@@ -340,4 +340,3 @@ class _CircularMeterPainter extends CustomPainter {
     return oldDelegate.percentage != percentage || oldDelegate.color != color;
   }
 }
-
