@@ -97,7 +97,9 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "lib/icons/icon.png"
-  background_color: "#000000"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "lib/icons/amicooked_logo.png"
+  remove_alpha_ios: false
   web:
     generate: true
     image_path: "lib/icons/icon.png"

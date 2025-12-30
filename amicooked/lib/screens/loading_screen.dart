@@ -143,7 +143,6 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                         height: 120,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.primaryBlack,
                           border: Border.all(
                             color: AppTheme.flameOrange.withOpacity(0.25),
                             width: 1.5,
