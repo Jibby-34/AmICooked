@@ -1,6 +1,6 @@
 {
-    "name": "amicooked",
-    "short_name": "amicooked",
+    "name": "Am I Cooked?",
+    "short_name": "Am I Cooked?",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#000000",
