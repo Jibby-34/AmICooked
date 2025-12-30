@@ -132,7 +132,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Animated flame icon
+                // Animated logo
                 AnimatedBuilder(
                   animation: _flameAnimation,
                   builder: (context, child) {
@@ -143,7 +143,11 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                         height: 120,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: AppTheme.fireGradient,
+                          color: AppTheme.primaryBlack,
+                          border: Border.all(
+                            color: AppTheme.flameOrange.withOpacity(0.25),
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
                               color: AppTheme.flameOrange.withOpacity(0.6),
@@ -152,10 +156,11 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                             ),
                           ],
                         ),
-                        child: const Center(
-                          child: Text(
-                            '🔥',
-                            style: TextStyle(fontSize: 64),
+                        child: Center(
+                          child: Image.asset(
+                            'lib/icons/amicooked_logo.png',
+                            width: 80,
+                            height: 80,
                           ),
                         ),
                       ),
