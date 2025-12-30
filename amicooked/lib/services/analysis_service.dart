@@ -144,10 +144,23 @@ class AnalysisService {
             // Format 3: Direct format (already parsed)
             print('✓ Detected direct format');
             try {
+              // Handle recoveryPlan - can be either a string or a list of strings
+              String? recoveryPlanText;
+              if (data['recoveryPlan'] != null) {
+                if (data['recoveryPlan'] is List) {
+                  final planList = List<String>.from(data['recoveryPlan'] as List);
+                  recoveryPlanText = planList.map((item) => '• $item').join('\n\n');
+                } else if (data['recoveryPlan'] is String) {
+                  recoveryPlanText = data['recoveryPlan'] as String;
+                }
+              }
+              
               return CookedResult(
                 cookedPercent: data['cookedPercent'] as int,
                 verdict: data['verdict'] as String,
                 explanation: data['explanation'] as String,
+                recoveryPlan: recoveryPlanText,
+                suggestedResponse: data['suggestedResponse'] as String?,
               );
             } catch (e, stackTrace) {
               print('❌ ERROR parsing direct format: $e');
@@ -177,10 +190,23 @@ class AnalysisService {
             print('Parsed JSON keys: ${parsedJson.keys.join(", ")}');
             print('Parsed JSON: $parsedJson');
             
+            // Handle recoveryPlan - can be either a string or a list of strings
+            String? recoveryPlanText;
+            if (parsedJson['recoveryPlan'] != null) {
+              if (parsedJson['recoveryPlan'] is List) {
+                final planList = List<String>.from(parsedJson['recoveryPlan'] as List);
+                recoveryPlanText = planList.map((item) => '• $item').join('\n\n');
+              } else if (parsedJson['recoveryPlan'] is String) {
+                recoveryPlanText = parsedJson['recoveryPlan'] as String;
+              }
+            }
+            
             return CookedResult(
               cookedPercent: parsedJson['cookedPercent'] as int,
               verdict: parsedJson['verdict'] as String,
               explanation: parsedJson['explanation'] as String,
+              recoveryPlan: recoveryPlanText,
+              suggestedResponse: parsedJson['suggestedResponse'] as String?,
             );
           } catch (e, stackTrace) {
             print('❌ ERROR parsing JSON string: $e');

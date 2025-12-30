@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/cooked_meter.dart';
 import '../services/share_service.dart';
 import 'home_screen.dart';
+import 'recovery_screen.dart';
 
 class ResultsScreen extends StatefulWidget {
   final CookedResult result;
@@ -67,17 +68,26 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
   }
 
   void _saveMe() {
-    // Stub for future rewrite feature
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('🔜 Save Me feature coming soon!'),
-        backgroundColor: AppTheme.flameOrange,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    // Check if recovery plan is available
+    if (widget.result.recoveryPlan != null || widget.result.suggestedResponse != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RecoveryScreen(result: widget.result),
         ),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('❌ No recovery plan available for this result'),
+          backgroundColor: AppTheme.flameRed,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
   }
 
   void _shareVerdict() async {
