@@ -236,3 +236,4 @@ Future share features in development:
 **Ready to share? Get analyzed and show the world how cooked (or chill) you are! 🔥**
 
 
+
