@@ -1,11 +1,11 @@
 {
-    "name": "Am I Cooked?",
-    "short_name": "Am I Cooked?",
+    "name": "amicooked",
+    "short_name": "amicooked",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#000000",
-    "theme_color": "#FF6B35",
-    "description": "Paste it. Screenshot it. Face the truth.",
+    "background_color": "#0175C2",
+    "theme_color": "#0175C2",
+    "description": "A new Flutter project.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

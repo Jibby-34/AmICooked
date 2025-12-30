@@ -297,3 +297,4 @@ The card is rendered using Flutter's widget system and captured as a high-resolu
 
 The watermark ensures brand visibility while remaining subtle and professional. All text is rendered using the app's existing theme for consistency.
 
+
