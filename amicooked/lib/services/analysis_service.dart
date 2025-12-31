@@ -13,11 +13,13 @@ class AnalysisService {
   /// 
   /// [text] - The text content to analyze
   /// [image] - The image file to analyze
+  /// [rizzMode] - Whether to analyze in rizz mode (dating/attraction context)
   /// 
   /// Throws an exception if the API call fails or returns invalid data
   Future<CookedResult> analyzeInput({
     String? text,
     File? image,
+    bool rizzMode = false,
   }) async {
     try {
       print('=== Starting API request ===');
@@ -38,6 +40,10 @@ class AnalysisService {
         requestBody['imageBase64'] = base64Image;
         print('Added image to request: ${bytes.length} bytes');
       }
+      
+      // Add rizzMode parameter
+      requestBody['rizzMode'] = rizzMode;
+      print('Rizz mode: $rizzMode');
 
       // Make API request
       final url = Uri.parse(_apiUrl);

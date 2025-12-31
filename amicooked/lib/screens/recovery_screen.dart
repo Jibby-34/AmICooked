@@ -5,10 +5,12 @@ import '../theme/app_theme.dart';
 
 class RecoveryScreen extends StatefulWidget {
   final CookedResult result;
+  final bool rizzMode;
 
   const RecoveryScreen({
     super.key,
     required this.result,
+    this.rizzMode = false,
   });
 
   @override
@@ -79,6 +81,10 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final isRizzMode = widget.rizzMode;
+    final primaryColor = isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange;
+    final accentColor = isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
+    
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -87,9 +93,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          '🔥 Save Me',
-          style: TextStyle(
+        title: Text(
+          isRizzMode ? '💜 Level Up' : '🔥 Save Me',
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -103,7 +109,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
             colors: [
               AppTheme.primaryBlack,
               AppTheme.secondaryBlack,
-              AppTheme.flameOrange.withOpacity(0.1),
+              primaryColor.withOpacity(0.1),
             ],
           ),
         ),
@@ -121,7 +127,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                     
                     // Title
                     Text(
-                      'Recovery Plan',
+                      isRizzMode ? 'Level Up Your Game' : 'Recovery Plan',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -131,7 +137,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                     const SizedBox(height: 8),
                     
                     Text(
-                      'Here\'s how to fix this situation',
+                      isRizzMode 
+                        ? 'Here\'s how to boost your rizz' 
+                        : 'Here\'s how to fix this situation',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppTheme.textSecondary,
                       ),
@@ -143,9 +151,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                     // Suggested Response Section
                     if (widget.result.suggestedResponse != null) ...[
                       Text(
-                        'Suggested Response',
+                        isRizzMode ? 'Smooth Response' : 'Suggested Response',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTheme.flameOrange,
+                          color: primaryColor,
                         ),
                       ),
                       
@@ -157,7 +165,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: AppTheme.flameOrange,
+                            color: primaryColor,
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(20),
                               topRight: Radius.circular(20),
@@ -166,7 +174,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.flameOrange.withOpacity(0.3),
+                                color: primaryColor.withOpacity(0.3),
                                 blurRadius: 12,
                                 spreadRadius: 2,
                               ),
@@ -214,9 +222,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                     // Recovery Plan Section
                     if (widget.result.recoveryPlan != null) ...[
                       Text(
-                        'Recovery Strategy',
+                        isRizzMode ? 'Rizz Strategy' : 'Recovery Strategy',
                         style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTheme.flameOrange,
+                          color: primaryColor,
                         ),
                       ),
                       
@@ -228,7 +236,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                           color: AppTheme.secondaryBlack,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: AppTheme.flameOrange.withOpacity(0.5),
+                            color: primaryColor.withOpacity(0.5),
                             width: 2,
                           ),
                         ),
@@ -240,19 +248,19 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.flameOrange.withOpacity(0.2),
+                                    color: primaryColor.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: const Icon(
-                                    Icons.lightbulb_outline,
-                                    color: AppTheme.flameOrange,
+                                  child: Icon(
+                                    isRizzMode ? Icons.favorite_outline : Icons.lightbulb_outline,
+                                    color: primaryColor,
                                     size: 24,
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
-                                    'Action Plan',
+                                    isRizzMode ? 'Game Plan' : 'Action Plan',
                                     style: Theme.of(context).textTheme.headlineSmall,
                                   ),
                                 ),
@@ -278,19 +286,21 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            AppTheme.flameOrange.withOpacity(0.2),
-                            AppTheme.flameRed.withOpacity(0.2),
+                            primaryColor.withOpacity(0.2),
+                            accentColor.withOpacity(0.2),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
                         children: [
-                          const Text('💪', style: TextStyle(fontSize: 32)),
+                          Text(isRizzMode ? '✨' : '💪', style: const TextStyle(fontSize: 32)),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Text(
-                              'You got this! Follow the plan and you\'ll be back on track.',
+                              isRizzMode 
+                                ? 'You got this! Follow the plan and watch your rizz levels soar.'
+                                : 'You got this! Follow the plan and you\'ll be back on track.',
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),

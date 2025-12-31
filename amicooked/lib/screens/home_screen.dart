@@ -3,7 +3,9 @@ import 'dart:math' as math;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../services/rizz_mode_service.dart';
 import 'loading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -43,11 +45,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'Got caught lying about being sick',
     'My DMs just got leaked',
   ];
+  
+  final List<String> _rizzExamples = [
+    'I told her she looked cute and she replied "haha thanks"',
+    'They left me on read for 3 hours',
+    'My crush just posted with their ex',
+    'Got friendzoned after buying dinner',
+    'They viewed my story but didn\'t reply to my message',
+    'Sent a flirty text, got a thumbs up emoji',
+    'Made a move and got "I see you as a friend"',
+    'Their response to my paragraph was "lol"',
+    'Confessed feelings, they said "that\'s sweet"',
+    'Double texted and still no response',
+  ];
 
   @override
   void initState() {
     super.initState();
     _textController.addListener(_updateInputState);
+    
+    // Add listener for rizz mode changes
+    context.read<RizzModeService>().addListener(_onRizzModeChanged);
     
     // Set up glow animation for the button
     _glowController = AnimationController(
@@ -65,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     )..repeat();
 
-    // Initialize embers
+    // Initialize embers (will be colored based on rizz mode in painter)
     final random = math.Random();
     for (int i = 0; i < 15; i++) {
       _embers.add(Ember(
@@ -74,16 +92,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         size: random.nextDouble() * 3 + 1,
         speed: random.nextDouble() * 0.5 + 0.3,
         opacity: random.nextDouble() * 0.4 + 0.1,
-        color: i % 3 == 0 
-          ? AppTheme.flameRed 
-          : i % 3 == 1 
-            ? AppTheme.flameOrange 
-            : AppTheme.flameYellow,
+        colorIndex: i % 3,
       ));
     }
     
     // Start typing animation
     _startTypingAnimation();
+  }
+  
+  void _onRizzModeChanged() {
+    // Reset typing animation when mode changes
+    if (mounted) {
+      setState(() {
+        _typingText = '';
+        _currentCharIndex = 0;
+        _currentExampleIndex = 0;
+        _isDeleting = false;
+      });
+    }
   }
   
   void _startTypingAnimation() {
@@ -96,7 +122,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Only animate if user hasn't typed anything
       if (_textController.text.isEmpty) {
         setState(() {
-          final currentExample = _examples[_currentExampleIndex];
+          final isRizzMode = context.read<RizzModeService>().isRizzMode;
+          final examples = isRizzMode ? _rizzExamples : _examples;
+          final currentExample = examples[_currentExampleIndex];
           
           if (!_isDeleting) {
             // Typing forward
@@ -121,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             } else {
               // Move to next example
               _isDeleting = false;
-              _currentExampleIndex = (_currentExampleIndex + 1) % _examples.length;
+              _currentExampleIndex = (_currentExampleIndex + 1) % examples.length;
             }
           }
         });
@@ -140,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _textController.dispose();
     _glowController.dispose();
     _emberController.dispose();
+    context.read<RizzModeService>().removeListener(_onRizzModeChanged);
     super.dispose();
   }
 
@@ -186,12 +215,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _analyze() {
     if (!_hasInput) return;
     
+    final isRizzMode = context.read<RizzModeService>().isRizzMode;
+    
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => LoadingScreen(
           text: _textController.text.isNotEmpty ? _textController.text : null,
           image: _selectedImage,
+          rizzMode: isRizzMode,
         ),
       ),
     );
@@ -199,280 +231,319 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Animated gradient background
-          AnimatedBuilder(
-            animation: _glowAnimation,
-            builder: (context, child) {
-              return Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topCenter,
-                    radius: 1.5,
-                    colors: [
-                      AppTheme.flameOrange.withOpacity(0.05 * _glowAnimation.value),
-                      AppTheme.flameRed.withOpacity(0.03 * _glowAnimation.value),
-                      AppTheme.primaryBlack,
-                    ],
-                    stops: const [0.0, 0.3, 1.0],
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // Floating embers
-          AnimatedBuilder(
-            animation: _emberController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: EmberPainter(
-                  embers: _embers,
-                  animation: _emberController.value,
-                ),
-                size: Size.infinite,
-              );
-            },
-          ),
-
-          // Main content
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 40),
-                  
-                  // Title with gradient
-                  ShaderMask(
-                    shaderCallback: (bounds) => LinearGradient(
-                      colors: [
-                        AppTheme.flameYellow,
-                        AppTheme.flameOrange,
-                        AppTheme.flameRed,
-                      ],
-                    ).createShader(bounds),
-                    child: Text(
-                      '🔥 Am I Cooked?',
-                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                        color: Colors.white,
+    return Consumer<RizzModeService>(
+      builder: (context, rizzModeService, child) {
+        final isRizzMode = rizzModeService.isRizzMode;
+        final primaryColor = isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange;
+        final accentColor = isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
+        final lightColor = isRizzMode ? AppTheme.rizzPurpleLight : AppTheme.flameYellow;
+        
+        return Scaffold(
+          body: Stack(
+            children: [
+              // Animated gradient background
+              AnimatedBuilder(
+                animation: _glowAnimation,
+                builder: (context, child) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: Alignment.topCenter,
+                        radius: 1.5,
+                        colors: [
+                          primaryColor.withOpacity(0.05 * _glowAnimation.value),
+                          accentColor.withOpacity(0.03 * _glowAnimation.value),
+                          AppTheme.primaryBlack,
+                        ],
+                        stops: const [0.0, 0.3, 1.0],
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Subtitle with subtle glow
-                  AnimatedBuilder(
-                    animation: _glowAnimation,
-                    builder: (context, child) {
-                      return Text(
-                        'Paste it. Screenshot it. Face the truth.',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: AppTheme.textSecondary.withOpacity(0.7 + _glowAnimation.value * 0.3),
-                        ),
-                        textAlign: TextAlign.center,
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 48),
-                  
-                  // Text Input with enhanced styling and typing animation
-                  AnimatedBuilder(
-                    animation: _glowAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: _textController.text.isNotEmpty
-                              ? [
-                                  BoxShadow(
-                                    color: AppTheme.flameOrange.withOpacity(_glowAnimation.value * 0.15),
-                                    blurRadius: 15,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Stack(
-                          children: [
-                            TextField(
-                              controller: _textController,
-                              maxLines: 10,
-                              style: const TextStyle(color: AppTheme.textPrimary),
-                              decoration: const InputDecoration(
-                                hintText: '',
-                                alignLabelWithHint: true,
-                              ),
+                  );
+                },
+              ),
+
+              // Floating embers
+              AnimatedBuilder(
+                animation: _emberController,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: EmberPainter(
+                      embers: _embers,
+                      animation: _emberController.value,
+                      isRizzMode: isRizzMode,
+                    ),
+                    size: Size.infinite,
+                  );
+                },
+              ),
+
+              // Main content
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Rizz Mode Switch in top right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            isRizzMode ? '💜 Rizz Mode' : '🔥 Cooked Mode',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange,
+                              fontWeight: FontWeight.bold,
                             ),
-                            // Custom typing animation overlay
-                            if (_textController.text.isEmpty && _typingText.isNotEmpty)
-                              Positioned(
-                                left: 20,
-                                top: 20,
-                                right: 20,
-                                child: IgnorePointer(
-                                  child: RichText(
-                                    text: TextSpan(
-                                      children: [
-                                        TextSpan(
-                                          text: _typingText,
-                                          style: TextStyle(
-                                            color: AppTheme.textSecondary.withOpacity(0.6),
-                                            fontSize: 16,
-                                            height: 1.5,
-                                          ),
-                                        ),
-                                        // Blinking cursor
-                                        TextSpan(
-                                          text: _isDeleting ? '' : '|',
-                                          style: TextStyle(
-                                            color: AppTheme.flameOrange.withOpacity(
-                                              _glowAnimation.value,
+                          ),
+                          const SizedBox(width: 8),
+                          Switch(
+                            value: isRizzMode,
+                            onChanged: (_) => rizzModeService.toggleRizzMode(),
+                            activeColor: AppTheme.rizzPurpleMid,
+                            inactiveThumbColor: AppTheme.flameOrange,
+                            inactiveTrackColor: AppTheme.flameOrange.withOpacity(0.3),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // Title with gradient
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: isRizzMode ? [
+                            AppTheme.rizzPurpleLight,
+                            AppTheme.rizzPurpleMid,
+                            AppTheme.rizzPurpleDeep,
+                          ] : [
+                            AppTheme.flameYellow,
+                            AppTheme.flameOrange,
+                            AppTheme.flameRed,
+                          ],
+                        ).createShader(bounds),
+                        child: Text(
+                          isRizzMode ? '💜 Rizz or Miss?' : '🔥 Am I Cooked?',
+                          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Subtitle with subtle glow
+                      AnimatedBuilder(
+                        animation: _glowAnimation,
+                        builder: (context, child) {
+                          return Text(
+                            isRizzMode 
+                              ? 'Check your game. Measure your charm. Know your rizz.'
+                              : 'Paste it. Screenshot it. Face the truth.',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              color: AppTheme.textSecondary.withOpacity(0.7 + _glowAnimation.value * 0.3),
+                            ),
+                            textAlign: TextAlign.center,
+                          );
+                        },
+                      ),
+                      
+                      const SizedBox(height: 48),
+                      
+                      // Text Input with enhanced styling and typing animation
+                      AnimatedBuilder(
+                        animation: _glowAnimation,
+                        builder: (context, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _textController.text.isNotEmpty
+                                  ? [
+                                      BoxShadow(
+                                        color: primaryColor.withOpacity(_glowAnimation.value * 0.15),
+                                        blurRadius: 15,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Stack(
+                              children: [
+                                TextField(
+                                  controller: _textController,
+                                  maxLines: 10,
+                                  style: const TextStyle(color: AppTheme.textPrimary),
+                                  decoration: const InputDecoration(
+                                    hintText: '',
+                                    alignLabelWithHint: true,
+                                  ),
+                                ),
+                                // Custom typing animation overlay
+                                if (_textController.text.isEmpty && _typingText.isNotEmpty)
+                                  Positioned(
+                                    left: 20,
+                                    top: 20,
+                                    right: 20,
+                                    child: IgnorePointer(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          children: [
+                                            TextSpan(
+                                              text: _typingText,
+                                              style: TextStyle(
+                                                color: AppTheme.textSecondary.withOpacity(0.6),
+                                                fontSize: 16,
+                                                height: 1.5,
+                                              ),
                                             ),
-                                            fontSize: 16,
-                                            height: 1.5,
-                                          ),
+                                            // Blinking cursor
+                                            TextSpan(
+                                              text: _isDeleting ? '' : '|',
+                                              style: TextStyle(
+                                                color: primaryColor.withOpacity(
+                                                  _glowAnimation.value,
+                                                ),
+                                                fontSize: 16,
+                                                height: 1.5,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // OR Divider with gradient
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.transparent,
+                                    primaryColor.withOpacity(0.3),
+                                  ],
                                 ),
                               ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // OR Divider with gradient
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                AppTheme.flameOrange.withOpacity(0.3),
-                              ],
                             ),
                           ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'OR',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.flameOrange.withOpacity(0.7),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppTheme.flameOrange.withOpacity(0.3),
-                                Colors.transparent,
-                              ],
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: primaryColor.withOpacity(0.7),
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
+                          Expanded(
+                            child: Container(
+                              height: 1,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    primaryColor.withOpacity(0.3),
+                                    Colors.transparent,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Image Upload Section
+                      if (_selectedImage != null) ...[
+                        _buildImagePreview(isRizzMode, primaryColor),
+                        const SizedBox(height: 16),
+                      ] else ...[
+                        _buildImageUploadButton(isRizzMode, primaryColor),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Main CTA Button
+                      AnimatedBuilder(
+                        animation: _glowAnimation,
+                        builder: (context, child) {
+                          return Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: _hasInput
+                                  ? [
+                                      BoxShadow(
+                                        color: primaryColor.withOpacity(_glowAnimation.value * 0.5),
+                                        blurRadius: 20,
+                                        spreadRadius: 2,
+                                      ),
+                                      BoxShadow(
+                                        color: accentColor.withOpacity(_glowAnimation.value * 0.2),
+                                        blurRadius: 30,
+                                        spreadRadius: 5,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _hasInput ? _analyze : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _hasInput ? primaryColor : AppTheme.textSecondary,
+                                minimumSize: const Size(double.infinity, 64),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(isRizzMode ? '💜' : '🔥'),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isRizzMode ? 'Check My Rizz' : 'Am I Cooked?',
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      color: _hasInput ? AppTheme.primaryBlack : AppTheme.secondaryBlack,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Hint text
+                      if (!_hasInput)
+                        Text(
+                          'Add text or upload a screenshot to get started',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
                     ],
                   ),
-                  
-                  const SizedBox(height: 24),
-                  
-                  // Image Upload Section
-                  if (_selectedImage != null) ...[
-                    _buildImagePreview(),
-                    const SizedBox(height: 16),
-                  ] else ...[
-                    _buildImageUploadButton(),
-                    const SizedBox(height: 16),
-                  ],
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Main CTA Button
-                  AnimatedBuilder(
-                    animation: _glowAnimation,
-                    builder: (context, child) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: _hasInput
-                              ? [
-                                  BoxShadow(
-                                    color: AppTheme.flameOrange.withOpacity(_glowAnimation.value * 0.5),
-                                    blurRadius: 20,
-                                    spreadRadius: 2,
-                                  ),
-                                  BoxShadow(
-                                    color: AppTheme.flameRed.withOpacity(_glowAnimation.value * 0.2),
-                                    blurRadius: 30,
-                                    spreadRadius: 5,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _hasInput ? _analyze : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _hasInput ? AppTheme.flameOrange : AppTheme.textSecondary,
-                            minimumSize: const Size(double.infinity, 64),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text('🔥'),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Am I Cooked?',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: _hasInput ? AppTheme.primaryBlack : AppTheme.secondaryBlack,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Hint text
-                  if (!_hasInput)
-                    Text(
-                      'Add text or upload a screenshot to get started',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildImageUploadButton() {
+  Widget _buildImageUploadButton(bool isRizzMode, Color primaryColor) {
+    final accentColor = isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
     return AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
@@ -481,8 +552,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(
               colors: [
-                AppTheme.flameOrange.withOpacity(0.05),
-                AppTheme.flameRed.withOpacity(0.05),
+                primaryColor.withOpacity(0.05),
+                accentColor.withOpacity(0.05),
               ],
             ),
           ),
@@ -491,7 +562,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             icon: Icon(
               Icons.upload_file, 
               size: 28,
-              color: AppTheme.flameOrange.withOpacity(0.7 + _glowAnimation.value * 0.3),
+              color: primaryColor.withOpacity(0.7 + _glowAnimation.value * 0.3),
             ),
             label: Text(
               'Upload Screenshot',
@@ -502,7 +573,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size(double.infinity, 80),
               side: BorderSide(
-                color: AppTheme.flameOrange.withOpacity(0.3),
+                color: primaryColor.withOpacity(0.3),
                 width: 2,
                 style: BorderStyle.solid,
               ),
@@ -517,17 +588,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildImagePreview() {
+  Widget _buildImagePreview(bool isRizzMode, Color primaryColor) {
+    final accentColor = isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
     return AnimatedBuilder(
       animation: _glowAnimation,
       builder: (context, child) {
         return Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppTheme.flameOrange, width: 2),
+            border: Border.all(color: primaryColor, width: 2),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.flameOrange.withOpacity(_glowAnimation.value * 0.3),
+                color: primaryColor.withOpacity(_glowAnimation.value * 0.3),
                 blurRadius: 15,
                 spreadRadius: 1,
               ),
@@ -551,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onPressed: _removeImage,
                   icon: const Icon(Icons.close),
                   style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.flameRed,
+                    backgroundColor: accentColor,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -571,7 +643,7 @@ class Ember {
   final double size;
   final double speed;
   final double opacity;
-  final Color color;
+  final int colorIndex; // 0, 1, or 2 for different colors
 
   Ember({
     required this.x,
@@ -579,7 +651,7 @@ class Ember {
     required this.size,
     required this.speed,
     required this.opacity,
-    required this.color,
+    required this.colorIndex,
   });
 }
 
@@ -587,17 +659,35 @@ class Ember {
 class EmberPainter extends CustomPainter {
   final List<Ember> embers;
   final double animation;
+  final bool isRizzMode;
 
   EmberPainter({
     required this.embers,
     required this.animation,
+    this.isRizzMode = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     for (var ember in embers) {
+      // Select color based on mode
+      Color emberColor;
+      if (isRizzMode) {
+        emberColor = ember.colorIndex == 0 
+          ? AppTheme.rizzPurpleDeep 
+          : ember.colorIndex == 1 
+            ? AppTheme.rizzPurpleMid 
+            : AppTheme.rizzPurpleLight;
+      } else {
+        emberColor = ember.colorIndex == 0 
+          ? AppTheme.flameRed 
+          : ember.colorIndex == 1 
+            ? AppTheme.flameOrange 
+            : AppTheme.flameYellow;
+      }
+      
       final paint = Paint()
-        ..color = ember.color.withOpacity(ember.opacity)
+        ..color = emberColor.withOpacity(ember.opacity)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
       // Calculate position with vertical movement
@@ -615,6 +705,7 @@ class EmberPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(EmberPainter oldDelegate) => true;
+  bool shouldRepaint(EmberPainter oldDelegate) => 
+    oldDelegate.isRizzMode != isRizzMode || true;
 }
 

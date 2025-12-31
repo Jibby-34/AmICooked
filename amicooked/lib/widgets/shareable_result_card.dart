@@ -7,41 +7,81 @@ import 'dart:math' as math;
 /// Shows the cooked percentage, verdict, and key highlights in an appealing format
 class ShareableResultCard extends StatelessWidget {
   final CookedResult result;
+  final bool rizzMode;
 
   const ShareableResultCard({
     super.key,
     required this.result,
+    this.rizzMode = false,
   });
 
   String _getEmoji(int percentage) {
-    if (percentage >= 90) return '💀';
-    if (percentage >= 70) return '🔥';
-    if (percentage >= 50) return '😰';
-    if (percentage >= 30) return '😅';
-    return '✅';
+    if (rizzMode) {
+      // In rizz mode, high percentage is good
+      if (percentage >= 90) return '💜';
+      if (percentage >= 70) return '😍';
+      if (percentage >= 50) return '😊';
+      if (percentage >= 30) return '🙂';
+      return '😬';
+    } else {
+      // In cooked mode, high percentage is bad
+      if (percentage >= 90) return '💀';
+      if (percentage >= 70) return '🔥';
+      if (percentage >= 50) return '😰';
+      if (percentage >= 30) return '😅';
+      return '✅';
+    }
   }
 
   Color _getColorForPercentage(int percentage) {
-    if (percentage < 20) {
-      return const Color(0xFF4CAF50); // Green
-    } else if (percentage < 40) {
-      return const Color(0xFFFFEB3B); // Yellow
-    } else if (percentage < 60) {
-      return const Color(0xFFFF9800); // Orange
-    } else if (percentage < 80) {
-      return const Color(0xFFFF5722); // Deep Orange
+    if (rizzMode) {
+      // In rizz mode, high percentage is good (purple gradient)
+      if (percentage < 20) {
+        return AppTheme.rizzPurpleLight.withValues(alpha: 0.6);
+      } else if (percentage < 40) {
+        return AppTheme.rizzPurpleLight;
+      } else if (percentage < 60) {
+        return AppTheme.rizzPurpleMid;
+      } else if (percentage < 80) {
+        return AppTheme.rizzPurpleDeep;
+      } else {
+        return AppTheme.rizzPurpleDeep;
+      }
     } else {
-      return const Color(0xFFFF3B30); // Red
+      // In cooked mode, high percentage is bad (red gradient)
+      if (percentage < 20) {
+        return const Color(0xFF4CAF50); // Green
+      } else if (percentage < 40) {
+        return const Color(0xFFFFEB3B); // Yellow
+      } else if (percentage < 60) {
+        return const Color(0xFFFF9800); // Orange
+      } else if (percentage < 80) {
+        return const Color(0xFFFF5722); // Deep Orange
+      } else {
+        return const Color(0xFFFF3B30); // Red
+      }
     }
   }
 
   Color _getBackgroundColor(int percentage) {
-    if (percentage >= 70) {
-      return AppTheme.flameRed.withValues(alpha: 0.15);
-    } else if (percentage >= 50) {
-      return AppTheme.flameOrange.withValues(alpha: 0.1);
+    if (rizzMode) {
+      // In rizz mode, high percentage is good (purple shades)
+      if (percentage >= 70) {
+        return AppTheme.rizzPurpleDeep.withValues(alpha: 0.15);
+      } else if (percentage >= 50) {
+        return AppTheme.rizzPurpleMid.withValues(alpha: 0.1);
+      } else {
+        return AppTheme.rizzPurpleLight.withValues(alpha: 0.1);
+      }
     } else {
-      return const Color(0xFF4CAF50).withValues(alpha: 0.1);
+      // In cooked mode, high percentage is bad (red/orange shades)
+      if (percentage >= 70) {
+        return AppTheme.flameRed.withValues(alpha: 0.15);
+      } else if (percentage >= 50) {
+        return AppTheme.flameOrange.withValues(alpha: 0.1);
+      } else {
+        return const Color(0xFF4CAF50).withValues(alpha: 0.1);
+      }
     }
   }
 
@@ -86,14 +126,19 @@ class ShareableResultCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  'lib/icons/amicooked_logo.png',
-                  width: 48,
-                  height: 48,
-                ),
+                rizzMode 
+                  ? Text(
+                      '💜',
+                      style: TextStyle(fontSize: 48),
+                    )
+                  : Image.asset(
+                      'lib/icons/amicooked_logo.png',
+                      width: 48,
+                      height: 48,
+                    ),
                 SizedBox(width: 16),
                 Text(
-                  'Am I Cooked?',
+                  rizzMode ? 'Rizz or Miss?' : 'Am I Cooked?',
                   style: TextStyle(
                     fontSize: 42,
                     fontWeight: FontWeight.bold,
@@ -219,7 +264,7 @@ class ShareableResultCard extends StatelessWidget {
                 children: [
                   Icon(
                     Icons.auto_awesome,
-                    color: AppTheme.flameOrange,
+                    color: rizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange,
                     size: 24,
                   ),
                   SizedBox(width: 12),
@@ -284,7 +329,7 @@ class ShareableResultCard extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'COOKED',
+                rizzMode ? 'RIZZ LEVEL' : 'COOKED',
                 style: TextStyle(
                   fontSize: 24,
                   color: AppTheme.textSecondary,

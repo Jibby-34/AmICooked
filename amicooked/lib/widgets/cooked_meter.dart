@@ -5,11 +5,13 @@ import '../theme/app_theme.dart';
 class CookedMeter extends StatefulWidget {
   final int percentage;
   final Duration animationDuration;
+  final bool isRizzMode;
 
   const CookedMeter({
     super.key,
     required this.percentage,
     this.animationDuration = const Duration(milliseconds: 2000),
+    this.isRizzMode = false,
   });
 
   @override
@@ -48,16 +50,32 @@ class _CookedMeterState extends State<CookedMeter> with SingleTickerProviderStat
   }
 
   Color _getColorForPercentage(double percentage) {
-    if (percentage < 0.2) {
-      return const Color(0xFF4CAF50); // Green
-    } else if (percentage < 0.4) {
-      return const Color(0xFFFFEB3B); // Yellow
-    } else if (percentage < 0.6) {
-      return const Color(0xFFFF9800); // Orange
-    } else if (percentage < 0.8) {
-      return const Color(0xFFFF5722); // Deep Orange
+    if (widget.isRizzMode) {
+      // In rizz mode, high percentage is good (purple gradient)
+      if (percentage < 0.2) {
+        return AppTheme.rizzPurpleLight.withOpacity(0.6); // Light purple for low rizz
+      } else if (percentage < 0.4) {
+        return AppTheme.rizzPurpleLight; // Light purple
+      } else if (percentage < 0.6) {
+        return AppTheme.rizzPurpleMid; // Medium purple
+      } else if (percentage < 0.8) {
+        return AppTheme.rizzPurpleDeep; // Deep purple
+      } else {
+        return AppTheme.rizzPurpleDeep; // Deepest purple for high rizz
+      }
     } else {
-      return const Color(0xFFFF3B30); // Red
+      // In cooked mode, high percentage is bad (red gradient)
+      if (percentage < 0.2) {
+        return const Color(0xFF4CAF50); // Green
+      } else if (percentage < 0.4) {
+        return const Color(0xFFFFEB3B); // Yellow
+      } else if (percentage < 0.6) {
+        return const Color(0xFFFF9800); // Orange
+      } else if (percentage < 0.8) {
+        return const Color(0xFFFF5722); // Deep Orange
+      } else {
+        return const Color(0xFFFF3B30); // Red
+      }
     }
   }
 
@@ -111,7 +129,7 @@ class _CookedMeterState extends State<CookedMeter> with SingleTickerProviderStat
                         ),
                       ),
                       Text(
-                        'COOKED',
+                        widget.isRizzMode ? 'RIZZ LEVEL' : 'COOKED',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: AppTheme.textSecondary,
                           fontWeight: FontWeight.bold,

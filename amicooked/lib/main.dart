@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
 import 'services/ad_service.dart';
+import 'services/rizz_mode_service.dart';
 
 void main() async {
   // Set system UI overlay style for status bar
@@ -33,6 +35,15 @@ void main() async {
     print('Failed to preload ad: $e');
   }
   
+  // Initialize RizzModeService and load saved state
+  final rizzModeService = RizzModeService();
+  try {
+    await rizzModeService.loadRizzMode();
+    print('Rizz mode loaded: ${rizzModeService.isRizzMode}');
+  } catch (e) {
+    print('Failed to load rizz mode: $e');
+  }
+  
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -42,7 +53,12 @@ void main() async {
     ),
   );
   
-  runApp(const AmICookedApp());
+  runApp(
+    ChangeNotifierProvider.value(
+      value: rizzModeService,
+      child: const AmICookedApp(),
+    ),
+  );
 }
 
 class AmICookedApp extends StatelessWidget {

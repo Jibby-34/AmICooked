@@ -10,10 +10,12 @@ import 'dart:async';
 
 class ResultsScreen extends StatefulWidget {
   final CookedResult result;
+  final bool rizzMode;
 
   const ResultsScreen({
     super.key,
     required this.result,
+    this.rizzMode = false,
   });
 
   @override
@@ -106,12 +108,22 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     super.dispose();
   }
 
-  String _getEmoji(int percentage) {
-    if (percentage >= 90) return '💀';
-    if (percentage >= 70) return '🔥';
-    if (percentage >= 50) return '😰';
-    if (percentage >= 30) return '😅';
-    return '✅';
+  String _getEmoji(int percentage, bool isRizzMode) {
+    if (isRizzMode) {
+      // In rizz mode, high percentage is good
+      if (percentage >= 90) return '💜';
+      if (percentage >= 70) return '😍';
+      if (percentage >= 50) return '😊';
+      if (percentage >= 30) return '🙂';
+      return '😬';
+    } else {
+      // In cooked mode, high percentage is bad
+      if (percentage >= 90) return '💀';
+      if (percentage >= 70) return '🔥';
+      if (percentage >= 50) return '😰';
+      if (percentage >= 30) return '😅';
+      return '✅';
+    }
   }
 
   void _tryAnother() {
@@ -128,14 +140,20 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => RecoveryScreen(result: widget.result),
+          builder: (context) => RecoveryScreen(
+            result: widget.result,
+            rizzMode: widget.rizzMode,
+          ),
         ),
       );
     } else {
+      final errorColor = widget.rizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('❌ No recovery plan available for this result'),
-          backgroundColor: AppTheme.flameRed,
+          content: Text(widget.rizzMode 
+            ? '❌ No game plan available for this result'
+            : '❌ No recovery plan available for this result'),
+          backgroundColor: errorColor,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -153,7 +171,11 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     });
 
     try {
-      await _shareService.shareResult(context, widget.result);
+      await _shareService.shareResult(
+        context, 
+        widget.result,
+        rizzMode: widget.rizzMode,
+      );
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -169,10 +191,11 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
       }
     } catch (e) {
       if (mounted) {
+        final errorColor = widget.rizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Failed to share: $e'),
-            backgroundColor: AppTheme.flameRed,
+            backgroundColor: errorColor,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -191,6 +214,9 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    final isRizzMode = widget.rizzMode;
+    final primaryColor = isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange;
+    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -200,7 +226,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
             colors: [
               AppTheme.primaryBlack,
               AppTheme.secondaryBlack,
-              _getBackgroundColor(),
+              _getBackgroundColor(isRizzMode),
             ],
           ),
         ),
@@ -220,6 +246,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                     Center(
                       child: CookedMeter(
                         percentage: widget.result.cookedPercent,
+                        isRizzMode: isRizzMode,
                       ),
                     ),
                     
@@ -230,7 +257,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _getEmoji(widget.result.cookedPercent),
+                          _getEmoji(widget.result.cookedPercent, isRizzMode),
                           style: const TextStyle(fontSize: 40),
                         ),
                         const SizedBox(width: 12),
@@ -255,7 +282,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                         color: AppTheme.secondaryBlack,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: _getBorderColor(),
+                          color: _getBorderColor(isRizzMode),
                           width: 2,
                         ),
                       ),
@@ -276,6 +303,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                       icon: const Icon(Icons.refresh, size: 24),
                       label: const Text('Try Another'),
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
                         minimumSize: const Size(double.infinity, 56),
                       ),
                     ),
@@ -287,8 +315,8 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: _saveMe,
-                            icon: const Text('🔥'),
-                            label: const Text('Save Me'),
+                            icon: Text(isRizzMode ? '💜' : '🔥'),
+                            label: Text(isRizzMode ? 'Level Up' : 'Save Me'),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size(0, 56),
                             ),
@@ -327,23 +355,47 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     );
   }
 
-  Color _getBackgroundColor() {
-    if (widget.result.cookedPercent >= 70) {
-      return AppTheme.flameRed.withOpacity(0.15);
-    } else if (widget.result.cookedPercent >= 50) {
-      return AppTheme.flameOrange.withOpacity(0.1);
+  Color _getBackgroundColor(bool isRizzMode) {
+    if (isRizzMode) {
+      // In rizz mode, high percentage is good (purple shades)
+      if (widget.result.cookedPercent >= 70) {
+        return AppTheme.rizzPurpleDeep.withOpacity(0.15);
+      } else if (widget.result.cookedPercent >= 50) {
+        return AppTheme.rizzPurpleMid.withOpacity(0.1);
+      } else {
+        return AppTheme.rizzPurpleLight.withOpacity(0.1);
+      }
     } else {
-      return const Color(0xFF4CAF50).withOpacity(0.1);
+      // In cooked mode, high percentage is bad (red/orange shades)
+      if (widget.result.cookedPercent >= 70) {
+        return AppTheme.flameRed.withOpacity(0.15);
+      } else if (widget.result.cookedPercent >= 50) {
+        return AppTheme.flameOrange.withOpacity(0.1);
+      } else {
+        return const Color(0xFF4CAF50).withOpacity(0.1);
+      }
     }
   }
 
-  Color _getBorderColor() {
-    if (widget.result.cookedPercent >= 70) {
-      return AppTheme.flameRed;
-    } else if (widget.result.cookedPercent >= 50) {
-      return AppTheme.flameOrange;
+  Color _getBorderColor(bool isRizzMode) {
+    if (isRizzMode) {
+      // In rizz mode, high percentage is good (purple shades)
+      if (widget.result.cookedPercent >= 70) {
+        return AppTheme.rizzPurpleDeep;
+      } else if (widget.result.cookedPercent >= 50) {
+        return AppTheme.rizzPurpleMid;
+      } else {
+        return AppTheme.rizzPurpleLight;
+      }
     } else {
-      return const Color(0xFF4CAF50);
+      // In cooked mode, high percentage is bad (red/orange shades)
+      if (widget.result.cookedPercent >= 70) {
+        return AppTheme.flameRed;
+      } else if (widget.result.cookedPercent >= 50) {
+        return AppTheme.flameOrange;
+      } else {
+        return const Color(0xFF4CAF50);
+      }
     }
   }
 }

@@ -10,6 +10,13 @@ class AppTheme {
   static const Color flameYellow = Color(0xFFFFCC00);
   static const Color textPrimary = Color(0xFFFFFFFF);
   static const Color textSecondary = Color(0xFFB0B0B0);
+  
+  // Rizz Mode Color palette (Purple theme)
+  static const Color rizzPurpleLight = Color(0xFFE0BBE4);
+  static const Color rizzPurpleMid = Color(0xFFC77DFF);
+  static const Color rizzPurpleDark = Color(0xFF9D4EDD);
+  static const Color rizzPurpleDeep = Color(0xFF7209B7);
+  static const Color rizzPurpleAccent = Color(0xFFD896FF);
 
   // Gradients
   static const LinearGradient fireGradient = LinearGradient(

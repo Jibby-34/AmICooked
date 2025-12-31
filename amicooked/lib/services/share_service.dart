@@ -11,7 +11,7 @@ import '../widgets/shareable_result_card.dart';
 /// Service responsible for generating and sharing result images
 class ShareService {
   /// Generates a shareable image from the result and shares it using RepaintBoundary
-  Future<void> shareResult(BuildContext context, CookedResult result) async {
+  Future<void> shareResult(BuildContext context, CookedResult result, {bool rizzMode = false}) async {
     try {
       // Create a GlobalKey for the RepaintBoundary
       final GlobalKey repaintKey = GlobalKey();
@@ -19,7 +19,10 @@ class ShareService {
       // Build the widget we want to capture
       final widget = RepaintBoundary(
         key: repaintKey,
-        child: ShareableResultCard(result: result),
+        child: ShareableResultCard(
+          result: result,
+          rizzMode: rizzMode,
+        ),
       );
       
       // Create an overlay to render the widget off-screen
@@ -75,13 +78,13 @@ class ShareService {
       await file.writeAsBytes(imageBytes);
 
       // Prepare share text
-      final shareText = _generateShareText(result);
+      final shareText = _generateShareText(result, rizzMode);
 
       // Share the image with text
       await Share.shareXFiles(
         [XFile(file.path)],
         text: shareText,
-        subject: 'My Am I Cooked? Result',
+        subject: rizzMode ? 'My Rizz Level' : 'My Am I Cooked? Result',
       );
     } catch (e) {
       print('Error sharing result: $e');
@@ -90,17 +93,31 @@ class ShareService {
   }
 
   /// Generates the text to accompany the shared image
-  String _generateShareText(CookedResult result) {
-    final emoji = _getEmoji(result.cookedPercent);
-    return '$emoji I\'m ${result.cookedPercent}% cooked!\n\nCheck out the "Am I Cooked?" app to find out how cooked you are!';
+  String _generateShareText(CookedResult result, bool rizzMode) {
+    final emoji = _getEmoji(result.cookedPercent, rizzMode);
+    if (rizzMode) {
+      return '$emoji My rizz level is ${result.cookedPercent}%!\n\nCheck out the "Am I Cooked?" app to measure your rizz!';
+    } else {
+      return '$emoji I\'m ${result.cookedPercent}% cooked!\n\nCheck out the "Am I Cooked?" app to find out how cooked you are!';
+    }
   }
 
-  String _getEmoji(int percentage) {
-    if (percentage >= 90) return '💀';
-    if (percentage >= 70) return '🔥';
-    if (percentage >= 50) return '😰';
-    if (percentage >= 30) return '😅';
-    return '✅';
+  String _getEmoji(int percentage, bool rizzMode) {
+    if (rizzMode) {
+      // In rizz mode, high percentage is good
+      if (percentage >= 90) return '💜';
+      if (percentage >= 70) return '😍';
+      if (percentage >= 50) return '😊';
+      if (percentage >= 30) return '🙂';
+      return '😬';
+    } else {
+      // In cooked mode, high percentage is bad
+      if (percentage >= 90) return '💀';
+      if (percentage >= 70) return '🔥';
+      if (percentage >= 50) return '😰';
+      if (percentage >= 30) return '😅';
+      return '✅';
+    }
   }
 }
 
