@@ -315,10 +315,20 @@ class _RecoveryScreenState extends State<RecoveryScreen> with SingleTickerProvid
                     // Back button
                     ElevatedButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, size: 20),
-                      label: const Text('Back to Results'),
+                      icon: const Icon(Icons.arrow_back, size: 20, color: Colors.white),
+                      label: Text(
+                        'Back to Results',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
                         minimumSize: const Size(double.infinity, 56),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                     ),
                     

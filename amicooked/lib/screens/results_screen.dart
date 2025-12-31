@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/cooked_result.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cooked_meter.dart';
 import '../services/share_service.dart';
 import '../services/ad_service.dart';
+import '../services/iap_service.dart';
+import '../services/usage_limit_service.dart';
+import '../widgets/usage_limit_dialog.dart';
 import 'home_screen.dart';
 import 'recovery_screen.dart';
+import 'save_me_loading_screen.dart';
 import 'dart:async';
 
 class ResultsScreen extends StatefulWidget {
@@ -55,14 +60,22 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
   }
 
   void _handleAdDisplay() async {
+    // Get premium status
+    final iapService = context.read<IAPService>();
+    final isPremium = iapService.isPremiumUser;
+    
+    // Update ad service with premium status
+    _adService.setPremiumStatus(isPremium);
+    
     // Increment view count
     await _adService.incrementResultViewCount();
     
     print('📊 Result view count: ${_adService.resultViewCount}');
+    print('⭐ Premium status: $isPremium');
     
-    // Check if we should show an ad (every other time)
+    // Check if we should show an ad (every other time, and not for premium users)
     if (_adService.shouldShowAd()) {
-      print('🎯 Ad should be shown (view count is even)');
+      print('🎯 Ad should be shown (view count is even and not premium)');
       print('⏱️  Waiting 4 seconds before showing ad...');
       
       // Wait 4 seconds before showing ad
@@ -73,7 +86,11 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
         }
       });
     } else {
-      print('⏭️  Skipping ad this time (view count is odd)');
+      if (isPremium) {
+        print('⭐ Skipping ad - user has premium');
+      } else {
+        print('⏭️  Skipping ad this time (view count is odd)');
+      }
     }
   }
 
@@ -134,7 +151,38 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     );
   }
 
-  void _saveMe() {
+  void _saveMe() async {
+    // Get services
+    final iapService = context.read<IAPService>();
+    final usageLimitService = context.read<UsageLimitService>();
+    
+    // Check if user can use the feature
+    final isPremium = iapService.isPremiumUser;
+    final canUse = usageLimitService.canUseFeature(isPremium, widget.rizzMode);
+    
+    // Show warning dialog to non-premium users (either first use or out of uses)
+    if (!isPremium) {
+      final shouldContinue = await UsageLimitDialog.show(
+        context,
+        isRizzMode: widget.rizzMode,
+        usageLimitService: usageLimitService,
+        isFirstUse: canUse, // If they can use it, it's their first/available use
+      );
+      
+      // If user dismissed the dialog or chose not to continue, return
+      if (shouldContinue != true) {
+        return;
+      }
+      
+      // If they can't use it (out of uses), don't continue
+      if (!canUse) {
+        return;
+      }
+      
+      // Record usage for non-premium users
+      await usageLimitService.recordUsage(widget.rizzMode);
+    }
+    
     // Check if recovery plan is available
     if (widget.result.recoveryPlan != null || widget.result.suggestedResponse != null) {
       Navigator.push(

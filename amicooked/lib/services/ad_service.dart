@@ -11,6 +11,7 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isAdLoaded = false;
   int _resultViewCount = 0;
+  bool _isPremiumUser = false;
 
   // Test Ad Unit IDs (used in debug mode)
   static const String _testAndroidRewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
@@ -49,8 +50,18 @@ class AdService {
     await prefs.setInt('result_view_count', _resultViewCount);
   }
 
-  /// Check if ad should be shown (every other time)
+  /// Set premium user status
+  void setPremiumStatus(bool isPremium) {
+    _isPremiumUser = isPremium;
+    print('📱 Ad Service: Premium status set to $isPremium');
+  }
+
+  /// Check if ad should be shown (every other time, and not for premium users)
   bool shouldShowAd() {
+    if (_isPremiumUser) {
+      print('⭐ Premium user - skipping ad');
+      return false;
+    }
     return _resultViewCount % 2 == 0;
   }
 

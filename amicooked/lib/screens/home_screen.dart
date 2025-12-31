@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../services/rizz_mode_service.dart';
 import 'loading_screen.dart';
+import 'shop_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -284,24 +285,49 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Rizz Mode Switch in top right
+                      // Top bar with mode selector on left and shop icon on right
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            isRizzMode ? '💜 Rizz Mode' : '🔥 Cooked Mode',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          // Mode selector on the left
+                          Row(
+                            children: [
+                              Switch(
+                                value: isRizzMode,
+                                onChanged: (_) => rizzModeService.toggleRizzMode(),
+                                activeColor: AppTheme.rizzPurpleMid,
+                                inactiveThumbColor: AppTheme.flameOrange,
+                                inactiveTrackColor: AppTheme.flameOrange.withOpacity(0.3),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                isRizzMode ? '💜 Rizz' : '🔥 Cooked',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Switch(
-                            value: isRizzMode,
-                            onChanged: (_) => rizzModeService.toggleRizzMode(),
-                            activeColor: AppTheme.rizzPurpleMid,
-                            inactiveThumbColor: AppTheme.flameOrange,
-                            inactiveTrackColor: AppTheme.flameOrange.withOpacity(0.3),
+                          
+                          // Shop icon on the right
+                          IconButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ShopScreen(),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.shopping_bag,
+                              color: primaryColor,
+                              size: 28,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: primaryColor.withOpacity(0.1),
+                            ),
                           ),
                         ],
                       ),
