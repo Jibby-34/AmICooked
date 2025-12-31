@@ -3,8 +3,10 @@ import '../models/cooked_result.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cooked_meter.dart';
 import '../services/share_service.dart';
+import '../services/ad_service.dart';
 import 'home_screen.dart';
 import 'recovery_screen.dart';
+import 'dart:async';
 
 class ResultsScreen extends StatefulWidget {
   final CookedResult result;
@@ -22,7 +24,9 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   final ShareService _shareService = ShareService();
+  final AdService _adService = AdService();
   bool _isSharing = false;
+  Timer? _adTimer;
 
   @override
   void initState() {
@@ -43,10 +47,61 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     ));
     
     _slideController.forward();
+    
+    // Handle ad display logic
+    _handleAdDisplay();
+  }
+
+  void _handleAdDisplay() async {
+    // Increment view count
+    await _adService.incrementResultViewCount();
+    
+    print('📊 Result view count: ${_adService.resultViewCount}');
+    
+    // Check if we should show an ad (every other time)
+    if (_adService.shouldShowAd()) {
+      print('🎯 Ad should be shown (view count is even)');
+      print('⏱️  Waiting 4 seconds before showing ad...');
+      
+      // Wait 4 seconds before showing ad
+      _adTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) {
+          print('⏰ 4 seconds elapsed, attempting to show ad...');
+          _showRewardedAd();
+        }
+      });
+    } else {
+      print('⏭️  Skipping ad this time (view count is odd)');
+    }
+  }
+
+  void _showRewardedAd() {
+    print('🎬 _showRewardedAd() called');
+    print('   Ad ready status: ${_adService.isAdReady}');
+    
+    if (!_adService.isAdReady) {
+      print('❌ Ad not ready - cannot show');
+      return;
+    }
+
+    _adService.showRewardedAd(
+      onAdShown: () {
+        print('✅ Rewarded ad shown successfully');
+      },
+      onUserEarnedReward: () {
+        // User watched the ad and earned a reward
+        // You can optionally give them something here
+        print('🎉 User earned reward');
+      },
+      onAdFailed: () {
+        print('❌ Failed to show rewarded ad');
+      },
+    );
   }
 
   @override
   void dispose() {
+    _adTimer?.cancel();
     _slideController.dispose();
     super.dispose();
   }
