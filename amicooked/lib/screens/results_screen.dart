@@ -60,9 +60,9 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
   }
 
   void _handleAdDisplay() async {
-    // Get premium status
+    // Get premium status from IAP service
     final iapService = context.read<IAPService>();
-    final isPremium = iapService.isPremiumUser;
+    final isPremium = iapService.isPremium;
     
     // Update ad service with premium status
     _adService.setPremiumStatus(isPremium);
@@ -157,7 +157,7 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     final usageLimitService = context.read<UsageLimitService>();
     
     // Check if user can use the feature
-    final isPremium = iapService.isPremiumUser;
+    final isPremium = iapService.isPremium;
     final canUse = usageLimitService.canUseFeature(isPremium, widget.rizzMode);
     
     // Show warning dialog to non-premium users (either first use or out of uses)

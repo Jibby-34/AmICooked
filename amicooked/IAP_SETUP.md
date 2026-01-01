@@ -158,16 +158,33 @@ The app includes a "Restore Purchases" button that:
 - Ensure product ID matches exactly in both code and store console
 - Wait 2-4 hours after creating product in store console
 - Ensure app is signed with production certificate (for iOS)
+- Check that the app version uploaded to the store console matches your test build
 
 ### "IAP not available" message
 - Check device has internet connection
 - Ensure device is signed in to App Store / Play Store
-- Emulators may not support IAP - test on real device
+- **Emulators may not support IAP - test on real device**
+- For Android: App must be uploaded to Play Console (at least as internal testing track)
+- For iOS: App must be configured in App Store Connect with the correct bundle ID
+
+### Purchase button does nothing
+- Check the debug console/logs for error messages
+- Verify IAP service initialized successfully (look for "🛒 Initializing IAP Service..." logs)
+- Ensure products are loaded (look for "✅ Loaded X products" in logs)
+- On emulators, the store may not be available - **use a real device**
+- Make sure you're signed into a test account (sandbox for iOS, license testing for Android)
+
+### Purchase not completing
+- Check if the purchase flow opens but doesn't complete
+- Verify you have a valid payment method configured (even for test accounts)
+- For Android: Clear Google Play Store cache and data, then try again
+- For iOS: Sign out of App Store and sign back in with sandbox tester account
 
 ### Purchase not restoring
 - Ensure user is signed in with same account used for purchase
 - Check that product is non-consumable type
 - Try "Restore Purchases" button in shop
+- On iOS: Sandbox purchases don't persist across app reinstalls (this is normal for testing)
 
 ## Next Steps
 

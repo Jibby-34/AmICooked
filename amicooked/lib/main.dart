@@ -50,13 +50,18 @@ void main() async {
   final iapService = IAPService();
   try {
     await iapService.initialize();
-    print('IAP service initialized. Premium: ${iapService.isPremiumUser}');
+    print('IAP service initialized. Premium: ${iapService.isPremium}');
     
     // Update ad service with premium status
-    adService.setPremiumStatus(iapService.isPremiumUser);
+    adService.setPremiumStatus(iapService.isPremium);
   } catch (e) {
     print('Failed to initialize IAP service: $e');
   }
+  
+  // Listen to IAP changes and update ad service
+  iapService.addListener(() {
+    adService.setPremiumStatus(iapService.isPremium);
+  });
   
   // Initialize Usage Limit Service
   final usageLimitService = UsageLimitService();
@@ -66,11 +71,6 @@ void main() async {
   } catch (e) {
     print('Failed to initialize usage limit service: $e');
   }
-  
-  // Listen to IAP changes to update ad service
-  iapService.addListener(() {
-    adService.setPremiumStatus(iapService.isPremiumUser);
-  });
   
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

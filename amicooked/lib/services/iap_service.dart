@@ -3,230 +3,238 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Service to manage In-App Purchases
+/// Simplified IAP Service - rebuilt from scratch
 class IAPService extends ChangeNotifier {
+  // Singleton pattern
   static final IAPService _instance = IAPService._internal();
   factory IAPService() => _instance;
   IAPService._internal();
 
+  // IAP instance
   final InAppPurchase _iap = InAppPurchase.instance;
-  StreamSubscription<List<PurchaseDetails>>? _subscription;
   
-  // Product IDs - IMPORTANT: Replace these with your actual product IDs from App Store Connect and Google Play Console
+  // Product ID - keep the same as before
   static const String premiumProductId = 'premium_unlimited';
   
-  bool _isPremiumUser = false;
+  // State
+  bool _isPremium = false;
   bool _isAvailable = false;
+  bool _isInitialized = false;
   List<ProductDetails> _products = [];
-  bool _isLoading = false;
-
-  bool get isPremiumUser => _isPremiumUser;
-  bool get isAvailable => _isAvailable;
-  List<ProductDetails> get products => _products;
-  bool get isLoading => _isLoading;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
   
-  static const String _premiumKey = 'is_premium_user';
+  // Getters
+  bool get isPremium => _isPremium;
+  bool get isAvailable => _isAvailable;
+  bool get isInitialized => _isInitialized;
+  List<ProductDetails> get products => _products;
+  
+  // SharedPreferences key
+  static const String _premiumKey = 'premium_status';
 
   /// Initialize the IAP service
   Future<void> initialize() async {
-    print('🛒 Initializing IAP Service...');
+    print('🛒 [IAP] Initializing...');
     
-    // Check if IAP is available on this device
-    _isAvailable = await _iap.isAvailable();
-    print('🛒 IAP Available: $_isAvailable');
-    
-    if (!_isAvailable) {
-      print('⚠️  IAP not available on this device');
-      // Still load saved premium status for testing
+    try {
+      // Check if IAP is available
+      _isAvailable = await _iap.isAvailable();
+      print('🛒 [IAP] Available: $_isAvailable');
+      
+      // Load saved premium status
       await _loadPremiumStatus();
-      return;
+      
+      if (_isAvailable) {
+        // Set up purchase listener
+        _purchaseSubscription = _iap.purchaseStream.listen(
+          _handlePurchaseUpdate,
+          onDone: () => print('🛒 [IAP] Purchase stream closed'),
+          onError: (error) => print('❌ [IAP] Purchase stream error: $error'),
+        );
+        
+        // Load products
+        await loadProducts();
+        
+        // Restore previous purchases
+        await restorePurchases();
+      }
+      
+      _isInitialized = true;
+      print('✅ [IAP] Initialization complete. Premium: $_isPremium');
+    } catch (e) {
+      print('❌ [IAP] Initialization error: $e');
+      _isInitialized = true; // Mark as initialized even on error
     }
-
-    // Load saved premium status
-    await _loadPremiumStatus();
-
-    // Listen to purchase updates
-    _subscription = _iap.purchaseStream.listen(
-      _onPurchaseUpdate,
-      onDone: () => _subscription?.cancel(),
-      onError: (error) => print('❌ Purchase stream error: $error'),
-    );
-
-    // Load products
-    await loadProducts();
-    
-    // Restore purchases on startup
-    await restorePurchases();
   }
 
-  /// Load products from the store
+  /// Load products from store
   Future<void> loadProducts() async {
     if (!_isAvailable) {
-      print('⚠️  Cannot load products - IAP not available');
+      print('⚠️ [IAP] Cannot load products - store not available');
       return;
     }
 
-    _isLoading = true;
-    notifyListeners();
-
     try {
-      print('🛒 Loading products...');
-      const Set<String> productIds = {premiumProductId};
-      final ProductDetailsResponse response = await _iap.queryProductDetails(productIds);
-
+      print('🛒 [IAP] Loading products...');
+      final response = await _iap.queryProductDetails({premiumProductId});
+      
       if (response.error != null) {
-        print('❌ Error loading products: ${response.error}');
-        _products = [];
-      } else {
-        _products = response.productDetails;
-        print('✅ Loaded ${_products.length} products');
-        for (var product in _products) {
-          print('   - ${product.id}: ${product.title} - ${product.price}');
-        }
+        print('❌ [IAP] Error loading products: ${response.error}');
+        return;
       }
-    } catch (e) {
-      print('❌ Exception loading products: $e');
-      _products = [];
-    } finally {
-      _isLoading = false;
+      
+      _products = response.productDetails;
+      print('✅ [IAP] Loaded ${_products.length} product(s)');
+      
+      for (var product in _products) {
+        print('   📦 ${product.id}: ${product.title} - ${product.price}');
+      }
+      
       notifyListeners();
+    } catch (e) {
+      print('❌ [IAP] Exception loading products: $e');
     }
   }
 
-  /// Purchase the premium product
-  Future<void> purchasePremium() async {
-    if (!_isAvailable) {
-      print('⚠️  Cannot purchase - IAP not available');
-      return;
-    }
-
-    if (_isPremiumUser) {
-      print('ℹ️  User already has premium');
-      return;
-    }
-
-    final ProductDetails? product = _products.firstWhere(
-      (p) => p.id == premiumProductId,
-      orElse: () => throw Exception('Premium product not found'),
-    );
-
-    if (product == null) {
-      print('❌ Premium product not available');
-      return;
-    }
-
-    print('🛒 Initiating purchase for ${product.id}...');
+  /// Purchase premium
+  Future<bool> purchasePremium() async {
+    print('🛒 [IAP] purchasePremium() called');
     
-    final PurchaseParam purchaseParam = PurchaseParam(productDetails: product);
+    if (!_isAvailable) {
+      print('❌ [IAP] Store not available');
+      throw Exception('Store is not available');
+    }
+    
+    if (_isPremium) {
+      print('ℹ️ [IAP] Already premium');
+      return true;
+    }
+    
+    if (_products.isEmpty) {
+      print('⚠️ [IAP] No products loaded, reloading...');
+      await loadProducts();
+      
+      if (_products.isEmpty) {
+        print('❌ [IAP] No products available');
+        throw Exception('Product not available');
+      }
+    }
+    
+    final product = _products.firstWhere(
+      (p) => p.id == premiumProductId,
+      orElse: () => throw Exception('Product not found'),
+    );
+    
+    print('🛒 [IAP] Initiating purchase for: ${product.id}');
+    
+    final purchaseParam = PurchaseParam(productDetails: product);
     
     try {
-      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      final result = await _iap.buyNonConsumable(purchaseParam: purchaseParam);
+      print('🛒 [IAP] Purchase initiated: $result');
+      return result;
     } catch (e) {
-      print('❌ Purchase error: $e');
+      print('❌ [IAP] Purchase error: $e');
+      rethrow;
     }
   }
 
-  /// Restore previous purchases
+  /// Restore purchases
   Future<void> restorePurchases() async {
     if (!_isAvailable) {
-      print('⚠️  Cannot restore - IAP not available');
+      print('⚠️ [IAP] Cannot restore - store not available');
       return;
     }
-
-    print('🔄 Restoring purchases...');
+    
+    print('🔄 [IAP] Restoring purchases...');
     
     try {
       await _iap.restorePurchases();
-      print('✅ Restore purchases completed');
+      print('✅ [IAP] Restore complete');
     } catch (e) {
-      print('❌ Restore purchases error: $e');
+      print('❌ [IAP] Restore error: $e');
     }
   }
 
   /// Handle purchase updates from the stream
-  void _onPurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) async {
-    print('📦 Purchase update received: ${purchaseDetailsList.length} items');
+  void _handlePurchaseUpdate(List<PurchaseDetails> purchaseDetailsList) async {
+    print('📦 [IAP] Purchase update: ${purchaseDetailsList.length} item(s)');
     
-    for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
-      print('   - ${purchaseDetails.productID}: ${purchaseDetails.status}');
+    for (final purchase in purchaseDetailsList) {
+      print('   - ${purchase.productID}: ${purchase.status}');
       
-      if (purchaseDetails.status == PurchaseStatus.pending) {
-        print('⏳ Purchase pending...');
-      } else if (purchaseDetails.status == PurchaseStatus.error) {
-        print('❌ Purchase error: ${purchaseDetails.error}');
-      } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-                 purchaseDetails.status == PurchaseStatus.restored) {
-        print('✅ Purchase successful/restored!');
+      if (purchase.status == PurchaseStatus.pending) {
+        print('⏳ [IAP] Purchase pending...');
+      } else if (purchase.status == PurchaseStatus.error) {
+        print('❌ [IAP] Purchase error: ${purchase.error}');
+      } else if (purchase.status == PurchaseStatus.purchased ||
+                 purchase.status == PurchaseStatus.restored) {
+        print('✅ [IAP] Purchase success!');
         
-        // Verify purchase (in production, you should verify with your backend)
-        final bool valid = await _verifyPurchase(purchaseDetails);
-        
-        if (valid) {
-          print('✅ Purchase verified');
-          await _deliverProduct(purchaseDetails);
-        } else {
-          print('❌ Purchase verification failed');
+        // Verify and deliver
+        if (await _verifyPurchase(purchase)) {
+          await _deliverProduct(purchase);
         }
       }
-
+      
       // Complete the purchase
-      if (purchaseDetails.pendingCompletePurchase) {
-        print('✓ Completing purchase...');
-        await _iap.completePurchase(purchaseDetails);
+      if (purchase.pendingCompletePurchase) {
+        print('✓ [IAP] Completing purchase...');
+        await _iap.completePurchase(purchase);
       }
     }
   }
 
-  /// Verify the purchase (simplified - in production, verify with your backend)
-  Future<bool> _verifyPurchase(PurchaseDetails purchaseDetails) async {
-    // In a real app, you should verify the purchase with your backend server
-    // For now, we'll just return true
+  /// Verify purchase (simplified - in production use server verification)
+  Future<bool> _verifyPurchase(PurchaseDetails purchase) async {
+    // In production, verify with your backend
+    print('✓ [IAP] Verifying purchase (simplified)...');
     return true;
   }
 
-  /// Deliver the product to the user
-  Future<void> _deliverProduct(PurchaseDetails purchaseDetails) async {
-    if (purchaseDetails.productID == premiumProductId) {
+  /// Deliver the product to user
+  Future<void> _deliverProduct(PurchaseDetails purchase) async {
+    if (purchase.productID == premiumProductId) {
       await _setPremiumStatus(true);
-      print('🎉 Premium unlocked!');
+      print('🎉 [IAP] Premium unlocked!');
     }
   }
 
-  /// Load premium status from SharedPreferences
+  /// Load premium status from local storage
   Future<void> _loadPremiumStatus() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _isPremiumUser = prefs.getBool(_premiumKey) ?? false;
-      print('📱 Loaded premium status: $_isPremiumUser');
+      _isPremium = prefs.getBool(_premiumKey) ?? false;
+      print('📱 [IAP] Loaded premium status: $_isPremium');
       notifyListeners();
     } catch (e) {
-      print('❌ Failed to load premium status: $e');
+      print('❌ [IAP] Failed to load premium status: $e');
     }
   }
 
-  /// Save premium status to SharedPreferences
+  /// Save premium status to local storage
   Future<void> _setPremiumStatus(bool value) async {
-    _isPremiumUser = value;
+    _isPremium = value;
     notifyListeners();
     
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_premiumKey, value);
-      print('💾 Saved premium status: $value');
+      print('💾 [IAP] Saved premium status: $value');
     } catch (e) {
-      print('❌ Failed to save premium status: $e');
+      print('❌ [IAP] Failed to save premium status: $e');
     }
   }
 
-  /// For testing purposes - manually set premium status
-  Future<void> setTestPremiumStatus(bool value) async {
-    await _setPremiumStatus(value);
+  /// Test method to manually set premium (for debugging only)
+  Future<void> enableTestPremium() async {
+    print('🧪 [IAP] Test premium enabled');
+    await _setPremiumStatus(true);
   }
 
-  /// Dispose of the service
   @override
   void dispose() {
-    _subscription?.cancel();
+    _purchaseSubscription?.cancel();
     super.dispose();
   }
 }
