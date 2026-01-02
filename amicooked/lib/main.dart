@@ -11,6 +11,11 @@ import 'services/usage_limit_service.dart';
 void main() async {
   // Set system UI overlay style for status bar
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock app orientation to portrait only
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   
   // Initialize AdMob
   try {

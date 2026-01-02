@@ -174,8 +174,25 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
         return;
       }
       
-      // If they can't use it (out of uses), don't continue
-      if (!canUse) {
+      // Re-check if they can use it (in case timer expired while dialog was open)
+      final canUseNow = usageLimitService.canUseFeature(isPremium, widget.rizzMode);
+      if (!canUseNow) {
+        // Show error that they still can't use it
+        final errorColor = widget.rizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(widget.rizzMode 
+                ? '❌ You\'ve already used your free Level Up today'
+                : '❌ You\'ve already used your free Save Me today'),
+              backgroundColor: errorColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          );
+        }
         return;
       }
       

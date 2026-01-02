@@ -31,7 +31,7 @@ class UsageLimitService extends ChangeNotifier {
   Future<void> initialize() async {
     print('⏰ Initializing Usage Limit Service...');
     await _loadUsageData();
-    // Disabled for testing: _checkAndResetDaily();
+    _checkAndResetDaily();
   }
 
   /// Load usage data from SharedPreferences
@@ -64,14 +64,14 @@ class UsageLimitService extends ChangeNotifier {
   }
 
   /// Check if 24 hours have passed and reset the daily limit
-  /// DISABLED FOR TESTING - uncomment to re-enable 24-hour timer
   void _checkAndResetDaily() {
     // Cooked mode check
     if (_lastCookedUseDate != null) {
       final now = DateTime.now();
       final difference = now.difference(_lastCookedUseDate!);
       
-      if (difference.inHours >= 24) {
+      // Check if 24 hours (86400 seconds) have passed
+      if (difference.inSeconds >= 86400) {
         print('✅ 24 hours passed for Save Me - resetting');
         _resetCookedLimit();
       }
@@ -82,7 +82,8 @@ class UsageLimitService extends ChangeNotifier {
       final now = DateTime.now();
       final difference = now.difference(_lastRizzUseDate!);
       
-      if (difference.inHours >= 24) {
+      // Check if 24 hours (86400 seconds) have passed
+      if (difference.inSeconds >= 86400) {
         print('✅ 24 hours passed for Level Up - resetting');
         _resetRizzLimit();
       }
@@ -150,8 +151,8 @@ class UsageLimitService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Get the time remaining until the next free use (in hours)
-  int getHoursUntilNextUse(bool isRizzMode) {
+  /// Get the time remaining until the next free use (in seconds)
+  int getSecondsUntilNextUse(bool isRizzMode) {
     final lastUseDate = isRizzMode ? _lastRizzUseDate : _lastCookedUseDate;
     final hasUsed = isRizzMode ? _hasUsedRizzToday : _hasUsedCookedToday;
     
@@ -161,21 +162,36 @@ class UsageLimitService extends ChangeNotifier {
 
     final now = DateTime.now();
     final difference = now.difference(lastUseDate);
-    final hoursRemaining = 24 - difference.inHours;
+    final secondsRemaining = 86400 - difference.inSeconds; // 24 hours = 86400 seconds
     
-    return hoursRemaining > 0 ? hoursRemaining : 0;
+    return secondsRemaining > 0 ? secondsRemaining : 0;
+  }
+
+  /// Get the time remaining until the next free use (in hours)
+  int getHoursUntilNextUse(bool isRizzMode) {
+    final seconds = getSecondsUntilNextUse(isRizzMode);
+    return (seconds / 3600).ceil();
   }
 
   /// Get a formatted string for time remaining
   String getTimeRemainingString(bool isRizzMode) {
-    final hours = getHoursUntilNextUse(isRizzMode);
+    final seconds = getSecondsUntilNextUse(isRizzMode);
     
-    if (hours == 0) {
+    if (seconds == 0) {
       return 'Available now!';
-    } else if (hours == 1) {
-      return '1 hour';
+    }
+    
+    final hours = (seconds / 3600).floor();
+    final minutes = ((seconds % 3600) / 60).floor();
+    
+    if (hours > 0 && minutes > 0) {
+      return '${hours}h ${minutes}m';
+    } else if (hours > 0) {
+      return '${hours}h';
+    } else if (minutes > 0) {
+      return '${minutes}m';
     } else {
-      return '$hours hours';
+      return 'less than 1m';
     }
   }
 
@@ -185,8 +201,8 @@ class UsageLimitService extends ChangeNotifier {
       return true; // Premium users have unlimited access
     }
     
-    // DISABLED FOR TESTING: Check if 24 hours have passed since last use
-    // _checkAndResetDaily();
+    // Check if 24 hours have passed since last use
+    _checkAndResetDaily();
     
     return isRizzMode ? canUseRizzToday() : canUseCookedToday();
   }

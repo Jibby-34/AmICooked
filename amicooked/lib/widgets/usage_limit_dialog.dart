@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../theme/app_theme.dart';
 import '../services/usage_limit_service.dart';
 import '../screens/shop_screen.dart';
 
 /// Dialog to show when user is about to use or has used their daily limit
-class UsageLimitDialog extends StatelessWidget {
+class UsageLimitDialog extends StatefulWidget {
   final bool isRizzMode;
   final UsageLimitService usageLimitService;
   final bool isFirstUse; // true = warning before use, false = already used
@@ -17,12 +18,68 @@ class UsageLimitDialog extends StatelessWidget {
   });
 
   @override
+  State<UsageLimitDialog> createState() => _UsageLimitDialogState();
+
+  /// Show the usage limit dialog
+  /// Returns true if user wants to continue with their free use, false otherwise
+  static Future<bool?> show(
+    BuildContext context, {
+    required bool isRizzMode,
+    required UsageLimitService usageLimitService,
+    required bool isFirstUse,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => UsageLimitDialog(
+        isRizzMode: isRizzMode,
+        usageLimitService: usageLimitService,
+        isFirstUse: isFirstUse,
+      ),
+    );
+  }
+}
+
+class _UsageLimitDialogState extends State<UsageLimitDialog> {
+  Timer? _timer;
+  bool _hasTimeExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start a timer that updates every second
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        // Check if time has expired
+        final seconds = widget.usageLimitService.getSecondsUntilNextUse(widget.isRizzMode);
+        final newExpiredState = seconds == 0 && !widget.isFirstUse;
+        
+        // If time just expired, close dialog and notify
+        if (newExpiredState && !_hasTimeExpired) {
+          _hasTimeExpired = true;
+          Navigator.of(context).pop(null);
+          return;
+        }
+        
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final primaryColor = isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange;
-    final accentColor = isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
-    final lightColor = isRizzMode ? AppTheme.rizzPurpleLight : AppTheme.flameYellow;
+    final primaryColor = widget.isRizzMode ? AppTheme.rizzPurpleMid : AppTheme.flameOrange;
+    final accentColor = widget.isRizzMode ? AppTheme.rizzPurpleDeep : AppTheme.flameRed;
+    final lightColor = widget.isRizzMode ? AppTheme.rizzPurpleLight : AppTheme.flameYellow;
     
-    final timeRemaining = usageLimitService.getTimeRemainingString(isRizzMode);
+    final timeRemaining = widget.usageLimitService.getTimeRemainingString(widget.isRizzMode);
+    final isAvailable = timeRemaining == 'Available now!';
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -61,7 +118,7 @@ class UsageLimitDialog extends StatelessWidget {
                         ),
                       ),
                       child: Icon(
-                        isFirstUse ? Icons.info_outline : Icons.timer,
+                        widget.isFirstUse ? Icons.info_outline : (isAvailable ? Icons.check_circle_outline : Icons.timer),
                         size: 40,
                         color: Colors.white,
                       ),
@@ -75,7 +132,7 @@ class UsageLimitDialog extends StatelessWidget {
                     colors: [lightColor, primaryColor],
                   ).createShader(bounds),
                   child: Text(
-                    isFirstUse ? 'Free Daily Use' : 'Daily Limit Reached',
+                    widget.isFirstUse ? 'Free Daily Use' : (isAvailable ? 'Free Use Available!' : 'Daily Limit Reached'),
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -88,13 +145,17 @@ class UsageLimitDialog extends StatelessWidget {
                 
                 // Message
                 Text(
-                  isFirstUse
-                      ? (isRizzMode
+                  widget.isFirstUse
+                      ? (widget.isRizzMode
                           ? 'You get 1 free Level Up per day.\nWould you like to use it now?'
                           : 'You get 1 free Save Me per day.\nWould you like to use it now?')
-                      : (isRizzMode
-                          ? 'You\'ve used your free Level Up for today!'
-                          : 'You\'ve used your free Save Me for today!'),
+                      : (isAvailable
+                          ? (widget.isRizzMode
+                              ? 'Your free Level Up has been reset!\nWould you like to use it now?'
+                              : 'Your free Save Me has been reset!\nWould you like to use it now?')
+                          : (widget.isRizzMode
+                              ? 'You\'ve used your free Level Up for today!'
+                              : 'You\'ve used your free Save Me for today!')),
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: AppTheme.textPrimary,
                   ),
@@ -103,8 +164,8 @@ class UsageLimitDialog extends StatelessWidget {
                 
                 const SizedBox(height: 12),
                 
-                // Time remaining (only show if already used)
-                if (!isFirstUse)
+                // Time remaining (only show if already used and not available)
+                if (!widget.isFirstUse && !isAvailable)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
@@ -117,7 +178,7 @@ class UsageLimitDialog extends StatelessWidget {
                         Icon(Icons.access_time, color: primaryColor, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          'Next free use in $timeRemaining',
+                          'Free use in: $timeRemaining',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w600,
@@ -177,12 +238,12 @@ class UsageLimitDialog extends StatelessWidget {
                 
                 const SizedBox(height: 20),
                 
-                // Buttons - Same layout for both states
+                // Buttons - Different layout based on availability
                 Row(
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, isFirstUse ? true : false),
+                        onPressed: () => Navigator.pop(context, (widget.isFirstUse || isAvailable) ? true : false),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: primaryColor.withOpacity(0.5)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -191,7 +252,7 @@ class UsageLimitDialog extends StatelessWidget {
                           ),
                         ),
                         child: Text(
-                          isFirstUse ? 'Use It Now' : 'Maybe Later',
+                          (widget.isFirstUse || isAvailable) ? 'Use It Now' : 'Maybe Later',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.bold,
@@ -265,25 +326,6 @@ class UsageLimitDialog extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Show the usage limit dialog
-  /// Returns true if user wants to continue with their free use, false otherwise
-  static Future<bool?> show(
-    BuildContext context, {
-    required bool isRizzMode,
-    required UsageLimitService usageLimitService,
-    required bool isFirstUse,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => UsageLimitDialog(
-        isRizzMode: isRizzMode,
-        usageLimitService: usageLimitService,
-        isFirstUse: isFirstUse,
       ),
     );
   }
