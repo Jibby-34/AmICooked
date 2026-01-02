@@ -399,9 +399,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   controller: _textController,
                                   maxLines: 10,
                                   style: const TextStyle(color: AppTheme.textPrimary),
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     hintText: '',
                                     alignLabelWithHint: true,
+                                    filled: true,
+                                    fillColor: AppTheme.secondaryBlack,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: Color(0xFF333333)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: const BorderSide(color: Color(0xFF333333)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      borderSide: BorderSide(color: primaryColor, width: 2),
+                                    ),
+                                    contentPadding: const EdgeInsets.all(20),
                                   ),
                                 ),
                                 // Custom typing animation overlay
