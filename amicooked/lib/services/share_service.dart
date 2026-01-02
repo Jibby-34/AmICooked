@@ -11,7 +11,8 @@ import '../widgets/shareable_result_card.dart';
 /// Service responsible for generating and sharing result images
 class ShareService {
   /// Generates a shareable image from the result and shares it using RepaintBoundary
-  Future<void> shareResult(BuildContext context, CookedResult result, {bool rizzMode = false}) async {
+  /// Returns true if the user completed the share, false if they cancelled
+  Future<bool> shareResult(BuildContext context, CookedResult result, {bool rizzMode = false}) async {
     try {
       // Create a GlobalKey for the RepaintBoundary
       final GlobalKey repaintKey = GlobalKey();
@@ -80,12 +81,15 @@ class ShareService {
       // Prepare share text
       final shareText = _generateShareText(result, rizzMode);
 
-      // Share the image with text
-      await Share.shareXFiles(
+      // Share the image with text and get the result
+      final ShareResult shareResult = await Share.shareXFiles(
         [XFile(file.path)],
         text: shareText,
         subject: rizzMode ? 'My Rizz Level' : 'My Am I Cooked? Result',
       );
+
+      // Return true only if the user actually shared (not dismissed)
+      return shareResult.status == ShareResultStatus.success;
     } catch (e) {
       print('Error sharing result: $e');
       rethrow;

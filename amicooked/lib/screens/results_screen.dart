@@ -236,13 +236,14 @@ class _ResultsScreenState extends State<ResultsScreen> with SingleTickerProvider
     });
 
     try {
-      await _shareService.shareResult(
+      final bool wasShared = await _shareService.shareResult(
         context, 
         widget.result,
         rizzMode: widget.rizzMode,
       );
       
-      if (mounted) {
+      // Only show success banner if the user actually completed the share
+      if (mounted && wasShared) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('✅ Shared successfully!'),
