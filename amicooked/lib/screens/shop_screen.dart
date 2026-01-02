@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../services/iap_service.dart';
-import '../services/rizz_mode_service.dart';
 
 class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
@@ -16,117 +15,105 @@ class ShopScreen extends StatefulWidget {
 class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
   bool _isPurchasing = false;
   
-  // Animation controllers
-  late AnimationController _glowController;
-  late Animation<double> _glowAnimation;
-  late AnimationController _emberController;
-  late AnimationController _shimmerController;
-  late Animation<double> _shimmerAnimation;
-  final List<ShopEmber> _embers = [];
+  // Animations
+  late AnimationController _backgroundController;
+  late AnimationController _particleController;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  
+  final List<Particle> _particles = [];
+  
+  // Beautiful unified color scheme (coral-pink meets purple)
+  static const Color shopPink = Color(0xFFFF6B9D);
+  static const Color shopPurple = Color(0xFFC06BFF);
+  static const Color shopOrange = Color(0xFFFFA06B);
+  static const Color shopDeep = Color(0xFF8B5FBF);
 
   @override
   void initState() {
     super.initState();
-    
-    // Set up animations
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+    _initAnimations();
+    _initParticles();
+  }
+
+  void _initAnimations() {
+    // Background glow animation
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 3),
       vsync: this,
     )..repeat(reverse: true);
     
-    _glowAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
-    );
-
-    // Set up ember animation (floating particles)
-    _emberController = AnimationController(
-      duration: const Duration(seconds: 25),
+    // Particle floating animation
+    _particleController = AnimationController(
+      duration: const Duration(seconds: 30),
       vsync: this,
     )..repeat();
+    
+    // Pulse animation for premium card
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+    
+    _pulseAnimation = Tween<double>(
+      begin: 0.95,
+      end: 1.05,
+    ).animate(CurvedAnimation(
+      parent: _pulseController,
+      curve: Curves.easeInOut,
+    ));
+  }
 
-    // Initialize embers with unified color palette
+  void _initParticles() {
     final random = math.Random();
-    for (int i = 0; i < 20; i++) {
-      _embers.add(ShopEmber(
+    for (int i = 0; i < 25; i++) {
+      _particles.add(Particle(
         x: random.nextDouble(),
         y: random.nextDouble(),
-        size: random.nextDouble() * 4 + 2,
-        speed: random.nextDouble() * 0.4 + 0.2,
-        opacity: random.nextDouble() * 0.3 + 0.1,
-        colorIndex: i % 4, // More color variations
+        size: random.nextDouble() * 3 + 1.5,
+        speed: random.nextDouble() * 0.3 + 0.15,
+        opacity: random.nextDouble() * 0.4 + 0.1,
+        colorIndex: i % 4,
       ));
     }
-    
-    // Shimmer animation for premium box
-    _shimmerController = AnimationController(
-      duration: const Duration(milliseconds: 2500),
-      vsync: this,
-    )..repeat();
-    
-    _shimmerAnimation = Tween<double>(begin: -1.0, end: 2.0).animate(
-      CurvedAnimation(parent: _shimmerController, curve: Curves.linear),
-    );
-    
-    // Listen for IAP changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final iapService = Provider.of<IAPService>(context, listen: false);
-      iapService.addListener(_onIAPChanged);
-    });
   }
 
   @override
   void dispose() {
-    final iapService = Provider.of<IAPService>(context, listen: false);
-    iapService.removeListener(_onIAPChanged);
-    _glowController.dispose();
-    _emberController.dispose();
-    _shimmerController.dispose();
+    _backgroundController.dispose();
+    _particleController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
-  void _onIAPChanged() {
-    if (!mounted) return;
-    
-    final iapService = Provider.of<IAPService>(context, listen: false);
-    
-    if (iapService.isPremium) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎉 Premium unlocked! Thank you!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  Future<void> _handlePurchase(IAPService iapService) async {
+  void _showPurchaseDialog() async {
     if (_isPurchasing) return;
     
     setState(() => _isPurchasing = true);
     
     try {
-      print('🛒 [SHOP] Purchase button pressed');
+      final iapService = context.read<IAPService>();
+      print('🛒 Starting purchase flow...');
+      
       await iapService.purchasePremium();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('🛒 Processing purchase...'),
-            backgroundColor: Colors.blue,
+            content: Text('✨ Processing your premium purchase...'),
+            backgroundColor: shopPurple,
             duration: Duration(seconds: 2),
           ),
         );
       }
     } catch (e) {
-      print('❌ [SHOP] Purchase failed: $e');
-      
+      print('❌ Purchase error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Purchase failed: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -137,19 +124,22 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     }
   }
 
-  Future<void> _handleRestore(IAPService iapService) async {
+  void _restorePurchases() async {
     try {
+      final iapService = context.read<IAPService>();
+      print('🔄 Restoring purchases...');
       await iapService.restorePurchases();
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Restore complete'),
+            content: Text('✅ Purchases restored successfully'),
             backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
+      print('❌ Restore error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -163,470 +153,513 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Unified color palette that blends orange and purple aesthetics
-    const primaryColor = Color(0xFFFF6B9D); // Coral pink - between orange and purple
-    const accentColor = Color(0xFFC06BFF); // Vibrant purple-pink
-    const highlightColor = Color(0xFFFFA06B); // Warm orange-pink
-    const deepColor = Color(0xFF8B5FBF); // Deep purple
-    
-    return Consumer2<RizzModeService, IAPService>(
-      builder: (context, rizzModeService, iapService, child) {
-        return Scaffold(
-          body: Stack(
+    return Scaffold(
+      backgroundColor: AppTheme.primaryBlack,
+      body: Consumer<IAPService>(
+        builder: (context, iapService, _) {
+          return Stack(
             children: [
-              // Animated gradient background
-              AnimatedBuilder(
-                animation: _glowAnimation,
-                builder: (context, child) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        center: Alignment.topRight,
-                        radius: 1.5,
-                        colors: [
-                          primaryColor.withOpacity(0.08 * _glowAnimation.value),
-                          accentColor.withOpacity(0.06 * _glowAnimation.value),
-                          deepColor.withOpacity(0.04 * _glowAnimation.value),
-                          AppTheme.primaryBlack,
-                        ],
-                        stops: const [0.0, 0.3, 0.6, 1.0],
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              // Floating embers
-              AnimatedBuilder(
-                animation: _emberController,
-                builder: (context, child) {
-                  return CustomPaint(
-                    painter: ShopEmberPainter(
-                      embers: _embers,
-                      animation: _emberController.value,
-                    ),
-                    size: Size.infinite,
-                  );
-                },
-              ),
-
+              // Animated background
+              _buildAnimatedBackground(),
+              
+              // Floating particles
+              _buildFloatingParticles(),
+              
               // Main content
               SafeArea(
                 child: Column(
                   children: [
                     // App bar
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                          Expanded(
-                            child: AnimatedBuilder(
-                              animation: _glowAnimation,
-                              builder: (context, child) {
-                                return ShaderMask(
-                                  shaderCallback: (bounds) => LinearGradient(
-                                    colors: [
-                                      primaryColor,
-                                      accentColor,
-                                      highlightColor,
-                                    ],
-                                  ).createShader(bounds),
-                                  child: Text(
-                                    '✨ Premium Shop',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 48), // Balance the back button
-                        ],
-                      ),
-                    ),
+                    _buildAppBar(),
                     
-                    // Scrollable content
+                    // Content
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(24.0),
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 32),
                             
-                            // Store not available warning
-                            if (!iapService.isAvailable)
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.orange, width: 2),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        'Store unavailable. Please test on a real device.',
-                                        style: TextStyle(color: Colors.orange),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            // Store warning if needed
+                            if (!iapService.isAvailable) _buildStoreWarning(),
                             
-                            if (!iapService.isAvailable)
-                              const SizedBox(height: 24),
-                            
-                            // Premium badge if already purchased
+                            // Main premium card
                             if (iapService.isPremium)
-                              AnimatedBuilder(
-                                animation: _glowAnimation,
-                                builder: (context, child) {
-                                  return Container(
-                                    padding: const EdgeInsets.all(24),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          primaryColor.withOpacity(0.8),
-                                          accentColor.withOpacity(0.8),
-                                        ],
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryColor.withOpacity(_glowAnimation.value * 0.4),
-                                          blurRadius: 20,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.stars, color: Colors.white, size: 32),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          'Premium Active!',
-                                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            
-                            if (iapService.isPremium)
-                              const SizedBox(height: 32),
-                            
-                            // Premium offer card with shimmer effect
-                            if (!iapService.isPremium)
-                              AnimatedBuilder(
-                                animation: Listenable.merge([_glowAnimation, _shimmerAnimation]),
-                                builder: (context, child) {
-                                  return Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(24),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryColor.withOpacity(_glowAnimation.value * 0.3),
-                                          blurRadius: 25,
-                                          spreadRadius: 3,
-                                        ),
-                                        BoxShadow(
-                                          color: accentColor.withOpacity(_glowAnimation.value * 0.2),
-                                          blurRadius: 35,
-                                          spreadRadius: 5,
-                                        ),
-                                      ],
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(24),
-                                      child: Stack(
-                                        children: [
-                                          // Background gradient
-                                          Container(
-                                            padding: const EdgeInsets.all(28),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  primaryColor.withOpacity(0.15),
-                                                  accentColor.withOpacity(0.12),
-                                                  deepColor.withOpacity(0.1),
-                                                ],
-                                              ),
-                                              border: Border.all(
-                                                color: primaryColor.withOpacity(0.3),
-                                                width: 2,
-                                              ),
-                                              borderRadius: BorderRadius.circular(24),
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                // Animated icon with pulsing glow
-                                                Container(
-                                                  padding: const EdgeInsets.all(20),
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      colors: [primaryColor, accentColor],
-                                                    ),
-                                                    shape: BoxShape.circle,
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: primaryColor.withOpacity(_glowAnimation.value * 0.6),
-                                                        blurRadius: 20,
-                                                        spreadRadius: 5,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.stars,
-                                                    size: 48,
-                                                    color: Colors.white,
-                                                    shadows: [
-                                                      Shadow(
-                                                        color: Colors.white.withOpacity(_glowAnimation.value * 0.8),
-                                                        blurRadius: 10,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                
-                                                const SizedBox(height: 24),
-                                                
-                                                // Title with gradient
-                                                ShaderMask(
-                                                  shaderCallback: (bounds) => LinearGradient(
-                                                    colors: [
-                                                      primaryColor,
-                                                      accentColor,
-                                                      highlightColor,
-                                                    ],
-                                                  ).createShader(bounds),
-                                                  child: Text(
-                                                    'Premium Unlimited',
-                                                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
-                                                ),
-                                                
-                                                const SizedBox(height: 20),
-                                                
-                                                // Price with glow
-                                                Text(
-                                                  iapService.products.isNotEmpty
-                                                      ? iapService.products.first.price
-                                                      : '\$3.99',
-                                                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                                                    color: AppTheme.textPrimary,
-                                                    fontWeight: FontWeight.bold,
-                                                    shadows: [
-                                                      Shadow(
-                                                        color: primaryColor.withOpacity(_glowAnimation.value * 0.5),
-                                                        blurRadius: 15,
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                
-                                                const SizedBox(height: 8),
-                                                
-                                                Text(
-                                                  'One-time payment',
-                                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                                    color: AppTheme.textSecondary,
-                                                  ),
-                                                ),
-                                                
-                                                const SizedBox(height: 28),
-                                                
-                                                // Purchase button
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: ElevatedButton(
-                                                    onPressed: _isPurchasing ? null : () => _handlePurchase(iapService),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: Colors.transparent,
-                                                      shadowColor: Colors.transparent,
-                                                      padding: EdgeInsets.zero,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius: BorderRadius.circular(16),
-                                                      ),
-                                                    ),
-                                                    child: Ink(
-                                                      decoration: BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          colors: [
-                                                            primaryColor,
-                                                            accentColor,
-                                                            highlightColor,
-                                                          ],
-                                                        ),
-                                                        borderRadius: BorderRadius.circular(16),
-                                                      ),
-                                                      child: Container(
-                                                        padding: const EdgeInsets.symmetric(vertical: 18),
-                                                        alignment: Alignment.center,
-                                                        child: _isPurchasing
-                                                            ? const SizedBox(
-                                                                height: 24,
-                                                                width: 24,
-                                                                child: CircularProgressIndicator(
-                                                                  color: Colors.white,
-                                                                  strokeWidth: 3,
-                                                                ),
-                                                              )
-                                                            : Row(
-                                                                mainAxisAlignment: MainAxisAlignment.center,
-                                                                children: [
-                                                                  const Icon(Icons.shopping_cart, color: Colors.white, size: 24),
-                                                                  const SizedBox(width: 12),
-                                                                  Text(
-                                                                    'Unlock Premium',
-                                                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                                                      color: Colors.white,
-                                                                      fontWeight: FontWeight.bold,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          
-                                          // Shimmer overlay effect
-                                          Positioned.fill(
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(24),
-                                              child: CustomPaint(
-                                                painter: ShimmerPainter(
-                                                  animation: _shimmerAnimation.value,
-                                                  primaryColor: primaryColor,
-                                                  secondaryColor: accentColor,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
+                              _buildActivePremiumCard()
+                            else
+                              _buildPremiumOfferCard(iapService),
                             
                             const SizedBox(height: 40),
                             
-                            // Features
-                            ShaderMask(
-                              shaderCallback: (bounds) => LinearGradient(
-                                colors: [primaryColor, accentColor],
-                              ).createShader(bounds),
-                              child: Text(
-                                'What You Get:',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 20),
-                            
-                            _buildFeature(
-                              Icons.all_inclusive,
-                              'Unlimited Save Me & Level Up',
-                              'Use recovery advice and game tips unlimited times',
-                              primaryColor,
-                              accentColor,
-                            ),
-                            
-                            _buildFeature(
-                              Icons.block,
-                              'No Ads',
-                              'Enjoy a completely ad-free experience',
-                              accentColor,
-                              highlightColor,
-                            ),
-                            
-                            _buildFeature(
-                              Icons.support,
-                              'Support Development',
-                              'Help us improve the app',
-                              highlightColor,
-                              primaryColor,
-                            ),
+                            // Benefits section
+                            _buildBenefitsSection(),
                             
                             const SizedBox(height: 32),
                             
                             // Restore button
-                            if (!iapService.isPremium)
-                              TextButton(
-                                onPressed: () => _handleRestore(iapService),
-                                child: Text(
-                                  'Restore Purchases',
-                                  style: TextStyle(
-                                    color: primaryColor.withOpacity(0.7),
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ),
+                            if (!iapService.isPremium) _buildRestoreButton(),
                             
-                            // Test button (for debugging)
+                            // Debug button
                             if (kDebugMode && !iapService.isPremium)
-                              TextButton(
-                                onPressed: () async {
-                                  await iapService.enableTestPremium();
-                                  if (mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('🧪 Test premium enabled'),
-                                        backgroundColor: Colors.purple,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: const Text(
-                                  'Enable Test Premium (Debug)',
-                                  style: TextStyle(
-                                    color: Colors.purple,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
+                              _buildDebugButton(iapService),
                             
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 24),
                             
-                            Text(
-                              'One-time purchase. No subscriptions.',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
+                            // Footer
+                            _buildFooter(),
+                            
+                            const SizedBox(height: 32),
                           ],
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAnimatedBackground() {
+    return AnimatedBuilder(
+      animation: _backgroundController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.topCenter,
+              radius: 1.8,
+              colors: [
+                shopPink.withOpacity(0.1 * _backgroundController.value),
+                shopPurple.withOpacity(0.08 * _backgroundController.value),
+                shopDeep.withOpacity(0.05 * _backgroundController.value),
+                AppTheme.primaryBlack,
+              ],
+              stops: const [0.0, 0.3, 0.6, 1.0],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFloatingParticles() {
+    return AnimatedBuilder(
+      animation: _particleController,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: ParticlePainter(
+            particles: _particles,
+            progress: _particleController.value,
+          ),
+          size: Size.infinite,
+        );
+      },
+    );
+  }
+
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          // Back button
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.secondaryBlack,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.textPrimary),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Title
+          Expanded(
+            child: ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [shopPink, shopPurple, shopOrange],
+              ).createShader(bounds),
+              child: const Text(
+                '✨ Premium Shop',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 48),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreWarning() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withOpacity(0.5), width: 2),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.warning_rounded, color: Colors.orange, size: 24),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Store unavailable. Test on a real device.',
+              style: TextStyle(color: Colors.orange, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivePremiumCard() {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulseAnimation.value,
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [shopPink, shopPurple],
+              ),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: shopPink.withOpacity(0.5),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.stars_rounded,
+                  size: 60,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Premium Active!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'You have unlimited access',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPremiumOfferCard(IAPService iapService) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: shopPink.withOpacity(0.4 * _pulseAnimation.value),
+                blurRadius: 40,
+                spreadRadius: 8,
+              ),
+              BoxShadow(
+                color: shopPurple.withOpacity(0.3 * _pulseAnimation.value),
+                blurRadius: 50,
+                spreadRadius: 10,
+              ),
+            ],
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  shopPink.withOpacity(0.2),
+                  shopPurple.withOpacity(0.15),
+                  shopDeep.withOpacity(0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: shopPink.withOpacity(0.4),
+                width: 2,
+              ),
+            ),
+            child: Column(
+              children: [
+                // Premium icon with glow
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [shopPink, shopPurple],
+                    ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: shopPink.withOpacity(0.8),
+                        blurRadius: 30,
+                        spreadRadius: 8,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.stars_rounded,
+                    size: 56,
+                    color: Colors.white,
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Title
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [shopPink, shopPurple, shopOrange],
+                  ).createShader(bounds),
+                  child: const Text(
+                    'Premium Unlimited',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Price
+                Text(
+                  iapService.products.isNotEmpty
+                      ? iapService.products.first.price
+                      : '\$3.99',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -1,
+                  ),
+                ),
+                
+                const SizedBox(height: 8),
+                
+                const Text(
+                  'One-time payment • Lifetime access',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // Purchase button
+                _buildPurchaseButton(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPurchaseButton() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _isPurchasing ? null : () {
+          print('🛒 [BUTTON] Tapped!');
+          _showPurchaseDialog();
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [shopPink, shopPurple, shopOrange],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: shopPink.withOpacity(0.5),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Container(
+            height: 64,
+            alignment: Alignment.center,
+            child: _isPurchasing
+                ? const SizedBox(
+                    height: 28,
+                    width: 28,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        'Unlock Premium',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBenefitsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [shopPink, shopPurple],
+          ).createShader(bounds),
+          child: const Text(
+            'Premium Benefits',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        _buildBenefit(
+          Icons.all_inclusive_rounded,
+          'Unlimited Everything',
+          'Use Save Me & Level Up features without limits',
+          shopPink,
+        ),
+        
+        _buildBenefit(
+          Icons.block_rounded,
+          'Zero Ads',
+          'Enjoy completely ad-free experience',
+          shopPurple,
+        ),
+        
+        _buildBenefit(
+          Icons.favorite_rounded,
+          'Support Development',
+          'Help us build amazing new features',
+          shopOrange,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBenefit(IconData icon, String title, String description, Color color) {
+    return AnimatedBuilder(
+      animation: _backgroundController,
+      builder: (context, child) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                color.withOpacity(0.15),
+                color.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: color.withOpacity(0.3 + _backgroundController.value * 0.2),
+              width: 2,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 32),
+              ),
+              
+              const SizedBox(width: 20),
+              
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
                       ),
                     ),
                   ],
@@ -639,82 +672,83 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFeature(IconData icon, String title, String description, Color color1, Color color2) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: AnimatedBuilder(
-        animation: _glowAnimation,
-        builder: (context, child) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  color1.withOpacity(0.08),
-                  color2.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: color1.withOpacity(0.2 + _glowAnimation.value * 0.1),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color1, color2],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color1.withOpacity(_glowAnimation.value * 0.4),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 17,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+  Widget _buildRestoreButton() {
+    return TextButton.icon(
+      onPressed: _restorePurchases,
+      icon: const Icon(Icons.restore_rounded, color: shopPurple),
+      label: const Text(
+        'Restore Purchases',
+        style: TextStyle(
+          color: shopPurple,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDebugButton(IAPService iapService) {
+    return TextButton(
+      onPressed: () async {
+        await iapService.enableTestPremium();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🧪 Test premium enabled'),
+              backgroundColor: Colors.purple,
             ),
           );
-        },
+        }
+      },
+      child: const Text(
+        'Enable Test Premium (Debug Only)',
+        style: TextStyle(color: Colors.purple, fontSize: 12),
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppTheme.secondaryBlack,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_rounded, color: AppTheme.textSecondary, size: 16),
+              SizedBox(width: 8),
+              Text(
+                'Secure checkout • Cancel anytime',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        const Text(
+          'One-time purchase. No subscriptions.',
+          style: TextStyle(
+            color: AppTheme.textSecondary,
+            fontSize: 14,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }
 
-// Ember particle class for floating animation in shop
-class ShopEmber {
+// Particle class for animations
+class Particle {
   final double x;
   final double y;
   final double size;
@@ -722,7 +756,7 @@ class ShopEmber {
   final double opacity;
   final int colorIndex;
 
-  ShopEmber({
+  Particle({
     required this.x,
     required this.y,
     required this.size,
@@ -732,106 +766,47 @@ class ShopEmber {
   });
 }
 
-// Custom painter for floating embers with unified color scheme
-class ShopEmberPainter extends CustomPainter {
-  final List<ShopEmber> embers;
-  final double animation;
+// Custom painter for floating particles
+class ParticlePainter extends CustomPainter {
+  final List<Particle> particles;
+  final double progress;
 
-  ShopEmberPainter({
-    required this.embers,
-    required this.animation,
-  });
+  ParticlePainter({required this.particles, required this.progress});
+
+  static const colors = [
+    Color(0xFFFF6B9D), // shopPink
+    Color(0xFFC06BFF), // shopPurple
+    Color(0xFFFFA06B), // shopOrange
+    Color(0xFF8B5FBF), // shopDeep
+  ];
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Unified color palette
-    const colors = [
-      Color(0xFFFF6B9D), // Coral pink
-      Color(0xFFC06BFF), // Vibrant purple-pink
-      Color(0xFFFFA06B), // Warm orange-pink
-      Color(0xFF8B5FBF), // Deep purple
-    ];
-
-    for (var ember in embers) {
-      final emberColor = colors[ember.colorIndex % colors.length];
+    for (var particle in particles) {
+      final color = colors[particle.colorIndex];
       
+      // Calculate position with floating animation
+      final y = ((particle.y + progress * particle.speed) % 1.0) * size.height;
+      final x = particle.x * size.width +
+          math.sin(progress * 2 * math.pi + particle.x * 8) * 30;
+      
+      // Draw particle with glow
       final paint = Paint()
-        ..color = emberColor.withOpacity(ember.opacity)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-
-      // Calculate position with vertical movement and subtle horizontal sway
-      final yPos = ((ember.y + animation * ember.speed) % 1.0) * size.height;
-      final xPos = ember.x * size.width + 
-                   math.sin(animation * 2 * math.pi + ember.x * 10) * 25;
-
-      // Draw ember as a small circle with glow
-      canvas.drawCircle(
-        Offset(xPos, yPos),
-        ember.size,
-        paint,
-      );
+        ..color = color.withOpacity(particle.opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
       
-      // Add inner glow
-      final glowPaint = Paint()
-        ..color = Colors.white.withOpacity(ember.opacity * 0.3)
+      canvas.drawCircle(Offset(x, y), particle.size, paint);
+      
+      // Inner glow
+      final innerPaint = Paint()
+        ..color = Colors.white.withOpacity(particle.opacity * 0.4)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
       
-      canvas.drawCircle(
-        Offset(xPos, yPos),
-        ember.size * 0.5,
-        glowPaint,
-      );
+      canvas.drawCircle(Offset(x, y), particle.size * 0.4, innerPaint);
     }
   }
 
   @override
-  bool shouldRepaint(ShopEmberPainter oldDelegate) => true;
-}
-
-// Custom painter for shimmer effect
-class ShimmerPainter extends CustomPainter {
-  final double animation;
-  final Color primaryColor;
-  final Color secondaryColor;
-
-  ShimmerPainter({
-    required this.animation,
-    required this.primaryColor,
-    required this.secondaryColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.transparent,
-          primaryColor.withOpacity(0.1),
-          secondaryColor.withOpacity(0.15),
-          Colors.white.withOpacity(0.3),
-          secondaryColor.withOpacity(0.15),
-          primaryColor.withOpacity(0.1),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.2, 0.35, 0.5, 0.65, 0.8, 1.0],
-        transform: GradientRotation(math.pi / 4),
-      ).createShader(Rect.fromLTWH(
-        size.width * animation - size.width,
-        0,
-        size.width * 2,
-        size.height,
-      ));
-
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(ShimmerPainter oldDelegate) =>
-      oldDelegate.animation != animation;
+  bool shouldRepaint(ParticlePainter oldDelegate) => true;
 }
 
