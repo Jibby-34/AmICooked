@@ -405,7 +405,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             ],
           ),
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -426,7 +426,7 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
               children: [
                 // Premium icon with glow
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [shopPink, shopPurple],
@@ -435,19 +435,19 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                     boxShadow: [
                       BoxShadow(
                         color: shopPink.withOpacity(0.8),
-                        blurRadius: 25,
-                        spreadRadius: 5,
+                        blurRadius: 30,
+                        spreadRadius: 8,
                       ),
                     ],
                   ),
                   child: const Icon(
                     Icons.stars_rounded,
-                    size: 40,
+                    size: 56,
                     color: Colors.white,
                   ),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 
                 // Title
                 ShaderMask(
@@ -457,14 +457,14 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                   child: const Text(
                     'Premium Unlimited',
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 
                 // Price
                 Text(
@@ -472,24 +472,24 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                       ? iapService.products.first.price
                       : '\$3.99',
                   style: const TextStyle(
-                    fontSize: 38,
+                    fontSize: 48,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimary,
                     letterSpacing: -1,
                   ),
                 ),
                 
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 
                 const Text(
                   'One-time payment • Lifetime access',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     color: AppTheme.textSecondary,
                   ),
                 ),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 
                 // Purchase button
                 _buildPurchaseButton(),
@@ -509,13 +509,13 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
           print('🛒 [BUTTON] Tapped!');
           _showPurchaseDialog();
         },
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Ink(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
               colors: [shopPink, shopPurple, shopOrange],
             ),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: shopPink.withOpacity(0.5),
@@ -525,12 +525,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
             ],
           ),
           child: Container(
-            height: 54,
+            height: 64,
             alignment: Alignment.center,
             child: _isPurchasing
                 ? const SizedBox(
-                    height: 24,
-                    width: 24,
+                    height: 28,
+                    width: 28,
                     child: CircularProgressIndicator(
                       color: Colors.white,
                       strokeWidth: 3,
@@ -539,12 +539,12 @@ class _ShopScreenState extends State<ShopScreen> with TickerProviderStateMixin {
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 24),
-                      SizedBox(width: 10),
+                      Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 28),
+                      SizedBox(width: 12),
                       Text(
                         'Unlock Premium',
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 0.5,
